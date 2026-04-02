@@ -304,6 +304,7 @@ header{border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-i
     <button class="btn" onclick="openManualRefresh()" style="border-color:var(--tt);color:var(--tt)">↻ Update Stats</button>
     <button class="btn" onclick="exportCSV()">↓ CSV</button>
     <button class="btn" onclick="openAI()" style="border-color:var(--gold);color:var(--gold)">✦ AI Lookup</button>
+    <button class="btn" onclick="openApiModal()" title="Set Gemini API key" style="font-size:16px;padding:6px 12px;border-color:var(--border2);color:var(--muted)">⚙</button>
     <button class="btn primary" onclick="openAddModal()">+ Add Talent</button>
   </div>
 </header>
@@ -602,7 +603,7 @@ async function pullFromSheets(){
   try{
     const r=await sheetsPost({action:'getAll'});
     if(r.ok&&Array.isArray(r.data)&&r.data.length>0){
-      db=r.data.map(row=>({...row,
+      const sheetDb=r.data.map(row=>({...row,
         instagram_followers:parseInt(row.instagram_followers)||0,
         tiktok_followers:parseInt(row.tiktok_followers)||0,
         youtube_followers:parseInt(row.youtube_followers)||0,
@@ -612,6 +613,12 @@ async function pullFromSheets(){
         youtube_handle:(row.youtube_handle||'').trim(),
         notes:(row.notes||'').trim()
       }));
+      const sheetNames=new Set(sheetDb.map(t=>(t.name||'').toLowerCase()));
+      const missing=SEED
+        .filter(s=>!sheetNames.has((s.name||'').toLowerCase()))
+        .map((d,i)=>({...d,id:d.id||('seed_'+i),notes:d.notes||'',bio:d.bio||'',tiktok_handle:d.tiktok_handle||'',youtube_handle:d.youtube_handle||'',photo_url:resolvePhotoUrl(d.name,d.photo_url||'')}));
+      db=[...sheetDb,...missing];
+      if(missing.length>0){missing.forEach(rec=>pushRecord(rec));}
       saveLocal();renderStats();renderAll();
       setSyncUI('ok','Synced · '+new Date().toLocaleTimeString());
       showToast('✓ '+db.length+' records loaded');
@@ -818,6 +825,43 @@ async function deleteTalent(){
   showToast('Removed');setSyncUI('busy','Syncing…');deleteRecord(id);
 }
 
+// ── AI API KEY (Google Gemini — free tier) ──
+function getApiKey(){return(localStorage.getItem('atoure_gemini_key')||'').trim();}
+function openApiModal(){
+  const existing=getApiKey();
+  document.getElementById('apiKeyInput').value=existing;
+  document.getElementById('apiKeyCurrent').textContent=existing?'Current key: '+existing.slice(0,12)+'…':'No key saved yet';
+  document.getElementById('apiKeyOverlay').style.display='flex';
+  setTimeout(()=>document.getElementById('apiKeyInput').focus(),100);
+}
+function closeApiModal(){document.getElementById('apiKeyOverlay').style.display='none';}
+function saveApiKey(){
+  const k=document.getElementById('apiKeyInput').value.trim();
+  if(!k){showToast('Please enter a key');return;}
+  localStorage.setItem('atoure_gemini_key',k);
+  closeApiModal();showToast('✓ API key saved');
+}
+async function aiCall(prompt,useSearch=true){
+  const key=getApiKey();if(!key){openApiModal();return'';}
+  const body={contents:[{role:'user',parts:[{text:prompt}]}]};
+  if(useSearch)body.tools=[{google_search:{}}];
+  try{
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data=await res.json();
+    if(data.error){console.error('Gemini API error:',data.error);throw new Error(data.error.message);}
+    let text='';
+    for(const part of data.candidates?.[0]?.content?.parts||[]){if(part.text)text+=part.text;}
+    return text.trim();
+  }catch(e){console.error('Gemini error:',e);throw e;}
+}
+function extractJSON(text){
+  // Strip markdown code fences if present
+  const stripped=text.replace(/```(?:json)?\s*/gi,'').replace(/```/g,'').trim();
+  // Try greedy match to get the largest JSON object
+  const m=stripped.match(/\{[\s\S]*\}/);
+  return m?m[0]:null;
+}
+
 // ── BIO GENERATOR ──
 async function generateBio(){
   const name=document.getElementById('eName').value.trim();
@@ -830,16 +874,13 @@ async function generateBio(){
   const btn=document.getElementById('genBioBtn');
   const status=document.getElementById('bioStatus');
   btn.textContent='✦ Writing…';btn.disabled=true;
-  status.textContent='Claude is writing a bio…';
+  status.textContent='Writing bio…';
   const prompt=`Write a short, professional 2-sentence bio for a talent roster for ${name}, a ${role||'content creator'}${country?' from '+country:''}${(ig+tt+yt)>0?' with '+fmt(ig+tt+yt)+' total social media followers':''}.
 The bio should: be written in third person, sound premium and suitable for a talent pitch deck, be concise (max 40 words), NOT mention specific follower numbers.
 Return ONLY the bio text, no quotes, no explanation.`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:150,messages:[{role:'user',content:prompt}]})});
-    const data=await res.json();
-    let text='';
-    for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
-    text=text.trim().replace(/^["']|["']$/g,'');
+    let text=await aiCall(prompt,false);
+    text=text.replace(/^["']|["']$/g,'');
     if(text){document.getElementById('eBio').value=text;status.innerHTML='<span style="color:#7ec97e">✓ Bio generated — edit as needed</span>';}
     else status.textContent='⚠ Could not generate — try adding more details';
   }catch(e){status.textContent='⚠ Error generating bio';console.error(e);}
@@ -861,12 +902,10 @@ Do these searches: "${name} instagram followers 2025", "${name} tiktok followers
 Return the actual numbers found. Return ONLY JSON (no markdown):
 {"instagram_followers":number,"tiktok_followers":number,"youtube_followers":number,"instagram":"handle","tiktok_handle":"handle","youtube_handle":"@channel","photo_url":"url or empty","confidence":"high/medium/low","notes":"source"}`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-    const data=await res.json();
-    let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
-    const match=text.match(/\{[\s\S]*\}/);
-    if(!match)throw new Error('No JSON');
-    const d=JSON.parse(match[0]);
+    const text=await aiCall(prompt,true);
+    const raw=extractJSON(text);
+    if(!raw)throw new Error('No JSON in response');
+    const d=JSON.parse(raw);
     if(d.instagram_followers)document.getElementById('eIgF').value=d.instagram_followers;
     if(d.tiktok_followers)document.getElementById('eTtF').value=d.tiktok_followers;
     if(d.youtube_followers)document.getElementById('eYtF').value=d.youtube_followers;
@@ -896,12 +935,10 @@ async function bulkRefreshAll(){
     try{
       const igH=t.instagram?'@'+t.instagram:'';
       const prompt=`Current social media follower counts for ${t.name}${igH?' (Instagram: '+igH+')':''}. Search the web and return ONLY JSON: {"instagram_followers":number,"tiktok_followers":number,"youtube_followers":number,"confidence":"high/medium/low"}. Use 0 if not found.`;
-      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-      const data=await res.json();
-      let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
-      const match=text.match(/\{[\s\S]*?\}/);
+      const text=await aiCall(prompt,true);
+      const match=extractJSON(text);
       if(match){
-        const d=JSON.parse(match[0]);
+        const d=JSON.parse(match);
         const ni=d.instagram_followers||0,nt=d.tiktok_followers||0,ny=d.youtube_followers||0;
         const oi=t.instagram_followers||0,ot=t.tiktok_followers||0,oy=t.youtube_followers||0;
         const hasChange=(ni!==oi&&ni>0)||(nt!==ot&&nt>0)||(ny!==oy&&ny>0);
@@ -1068,33 +1105,56 @@ function handleHInput(el){
   const count=Object.keys(handleChanges).length;document.getElementById('handleSaveBtn').textContent=count>0?'✓ Save '+count+' Change'+(count!==1?'s':''):'✓ Save Handles';
 }
 async function aiLookupAllHandles(){
-  const missing=db.filter(t=>!t.tiktok_handle&&!t.youtube_handle);
-  if(!missing.length){showToast('All talent already have handles');return;}
+  if(!getApiKey()){openApiModal();return;}
+  const fullyEmpty=db.filter(t=>!t.instagram&&!t.tiktok_handle&&!t.youtube_handle&&!(t.instagram_followers||t.tiktok_followers||t.youtube_followers));
+  const missingHandles=db.filter(t=>!fullyEmpty.includes(t)&&(!t.tiktok_handle&&!t.youtube_handle));
+  const missing=[...fullyEmpty,...missingHandles];
+  if(!missing.length){showToast('All talent already have complete profiles');return;}
   const btn=document.getElementById('aiHandlesBtn');btn.disabled=true;
-  document.getElementById('handleStatus').textContent='AI searching for handles…';
+  document.getElementById('handleStatus').textContent='AI filling in missing info…';
   let done=0;
   for(const t of missing){
-    btn.textContent='✦ Looking up '+done+'/'+missing.length+'…';
+    const isFull=fullyEmpty.includes(t);
+    btn.textContent='✦ Filling '+(done+1)+'/'+missing.length+' — '+t.name+'…';
     try{
-      const prompt=`Find the TikTok and YouTube handles for ${t.name}${t.instagram?' (Instagram: @'+t.instagram+')':''}${t.country?' from '+t.country:''}.
-Return ONLY JSON (no markdown): {"tiktok_handle":"handle without @, empty string if not found","youtube_handle":"@channel or empty string if not found"}`;
-      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:100,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-      const data=await res.json();
-      let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
-      const match=text.match(/\{[\s\S]*?\}/);
-      if(match){const d=JSON.parse(match[0]);if(!handleChanges[t.id])handleChanges[t.id]={};if(d.tiktok_handle){handleChanges[t.id].tiktok_handle=d.tiktok_handle.replace('@','');aiFilledHandles.add(t.id+'_tiktok_handle');}if(d.youtube_handle){handleChanges[t.id].youtube_handle=d.youtube_handle;aiFilledHandles.add(t.id+'_youtube_handle');}if(!d.tiktok_handle&&!d.youtube_handle)delete handleChanges[t.id];}
+      let prompt,maxTok;
+      if(isFull){
+        prompt=`Research the influencer/creator/artist named "${t.name}". Search the web and return ONLY JSON (no markdown):\n{"instagram":"handle without @","tiktok_handle":"handle without @, or empty","youtube_handle":"@channel or empty","instagram_followers":number,"tiktok_followers":number,"youtube_followers":number,"country":"Country","role":"Content Creator, Artist, or Presenter","bio":"1-2 sentence bio in third person","confidence":"high/medium/low"}`;
+        maxTok=400;
+      } else {
+        prompt=`Find the TikTok and YouTube handles for ${t.name}${t.instagram?' (Instagram: @'+t.instagram+')':''}${t.country?' from '+t.country:''}. Return ONLY JSON (no markdown): {"tiktok_handle":"handle without @, empty if not found","youtube_handle":"@channel or empty if not found"}`;
+        maxTok=100;
+      }
+      const text=await aiCall(prompt,true);
+      const match=extractJSON(text);
+      if(match){
+        const d=JSON.parse(match);
+        if(!handleChanges[t.id])handleChanges[t.id]={};
+        if(d.instagram){handleChanges[t.id].instagram=d.instagram.replace('@','');aiFilledHandles.add(t.id+'_instagram');}
+        if(d.tiktok_handle){handleChanges[t.id].tiktok_handle=d.tiktok_handle.replace('@','');aiFilledHandles.add(t.id+'_tiktok_handle');}
+        if(d.youtube_handle){handleChanges[t.id].youtube_handle=d.youtube_handle;aiFilledHandles.add(t.id+'_youtube_handle');}
+        if(isFull){
+          if(d.instagram_followers>0)handleChanges[t.id].instagram_followers=d.instagram_followers;
+          if(d.tiktok_followers>0)handleChanges[t.id].tiktok_followers=d.tiktok_followers;
+          if(d.youtube_followers>0)handleChanges[t.id].youtube_followers=d.youtube_followers;
+          if(d.country)handleChanges[t.id].country=d.country;
+          if(d.role)handleChanges[t.id].role=d.role;
+          if(d.bio)handleChanges[t.id].bio=d.bio;
+        }
+        if(!Object.keys(handleChanges[t.id]).length)delete handleChanges[t.id];
+      }
     }catch(e){console.error('Failed for '+t.name,e);}
-    done++;await new Promise(r=>setTimeout(r,300));
+    done++;await new Promise(r=>setTimeout(r,500));
   }
   renderHandleList();
   const found=Object.keys(handleChanges).length;
-  document.getElementById('handleStatus').textContent='✦ AI found handles for '+found+' talent — gold = AI filled';
+  document.getElementById('handleStatus').textContent=found>0?'✦ AI filled info for '+found+' talent — review then save':'⚠ No results — check the browser console (F12) for errors';
   document.getElementById('handleSaveBtn').textContent=found>0?'✓ Save '+found+' Change'+(found!==1?'s':''):'✓ Save Handles';
   btn.textContent='✦ AI Fill Missing';btn.disabled=false;
 }
 function saveHandles(){
   const count=Object.keys(handleChanges).length;if(!count){closeHandleModal();return;}
-  Object.entries(handleChanges).forEach(([id,ch])=>{const idx=db.findIndex(t=>String(t.id)===String(id));if(idx<0)return;if(ch.instagram!==undefined)db[idx].instagram=ch.instagram;if(ch.tiktok_handle!==undefined)db[idx].tiktok_handle=ch.tiktok_handle;if(ch.youtube_handle!==undefined)db[idx].youtube_handle=ch.youtube_handle;db[idx].last_updated=new Date().toISOString().split('T')[0];});
+  Object.entries(handleChanges).forEach(([id,ch])=>{const idx=db.findIndex(t=>String(t.id)===String(id));if(idx<0)return;if(ch.instagram!==undefined)db[idx].instagram=ch.instagram;if(ch.tiktok_handle!==undefined)db[idx].tiktok_handle=ch.tiktok_handle;if(ch.youtube_handle!==undefined)db[idx].youtube_handle=ch.youtube_handle;if(ch.instagram_followers!==undefined)db[idx].instagram_followers=parseInt(ch.instagram_followers)||0;if(ch.tiktok_followers!==undefined)db[idx].tiktok_followers=parseInt(ch.tiktok_followers)||0;if(ch.youtube_followers!==undefined)db[idx].youtube_followers=parseInt(ch.youtube_followers)||0;if(ch.country)db[idx].country=ch.country;if(ch.role)db[idx].role=ch.role;if(ch.bio)db[idx].bio=ch.bio;db[idx].last_updated=new Date().toISOString().split('T')[0];});
   saveLocal();renderStats();renderAll();closeHandleModal();showToast('✓ '+count+' talent handles updated — syncing…');setSyncUI('busy','Syncing…');pushAllToSheets();
 }
 
@@ -1111,11 +1171,9 @@ async function runAILookup(){
 Search the web and return ONLY a valid JSON object (no markdown):
 {"name":"Full name","instagram":"handle without @","tiktok_handle":"handle without @, or empty","youtube_handle":"@channel or empty","instagram_followers":number or 0,"tiktok_followers":number or 0,"youtube_followers":number or 0,"country":"Country name(s)","role":"Content Creator, Artist, or Presenter","photo_url":"direct URL or empty","bio":"1-2 sentence description","confidence":"high/medium/low","notes":"any caveats"}`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-    const data=await res.json();
-    let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
-    const match=text.match(/\{[\s\S]*\}/);if(!match)throw new Error('No JSON');
-    aiData=JSON.parse(match[0]);showAIResult(aiData);
+    const text=await aiCall(prompt,true);
+    const raw2=extractJSON(text);if(!raw2)throw new Error('No JSON in response');
+    aiData=JSON.parse(raw2);showAIResult(aiData);
   }catch(e){document.getElementById('aiStatus').textContent='⚠ Could not retrieve data. Try a more specific name.';console.error(e);}
   btn.textContent='Search';btn.disabled=false;
 }
@@ -1245,5 +1303,21 @@ setInterval(pullFromSheets, 5 * 60 * 1000);
 // Re-pull whenever the user switches back to this tab
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pullFromSheets(); });
 </script>
+
+<!-- API Key Modal -->
+<div id="apiKeyOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border2);padding:32px;width:480px;max-width:90vw;position:relative">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--text);margin-bottom:6px">Gemini API Key</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:20px;line-height:1.6">
+      Free at <strong style="color:var(--gold)">aistudio.google.com</strong> → Get API key → Create API key → Default Gemini Project
+    </div>
+    <input id="apiKeyInput" type="text" placeholder="AIzaSy…" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:10px 14px;font-family:'DM Mono',monospace;font-size:13px;outline:none;margin-bottom:16px">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="closeApiModal()">Cancel</button>
+      <button class="btn primary" onclick="saveApiKey()">Save Key</button>
+    </div>
+    <div id="apiKeyCurrent" style="font-size:10px;color:var(--muted);margin-top:12px;text-align:center"></div>
+  </div>
+</div>
 </body>
 </html>
