@@ -304,7 +304,7 @@ header{border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-i
     <button class="btn" onclick="openManualRefresh()" style="border-color:var(--tt);color:var(--tt)">↻ Update Stats</button>
     <button class="btn" onclick="exportCSV()">↓ CSV</button>
     <button class="btn" onclick="openAI()" style="border-color:var(--gold);color:var(--gold)">✦ AI Lookup</button>
-    <button class="btn" onclick="getApiKey()" title="Set Anthropic API key" style="font-size:16px;padding:6px 12px;border-color:var(--border2);color:var(--muted)">⚙</button>
+    <button class="btn" onclick="openApiModal()" title="Set Gemini API key" style="font-size:16px;padding:6px 12px;border-color:var(--border2);color:var(--muted)">⚙</button>
     <button class="btn primary" onclick="openAddModal()">+ Add Talent</button>
   </div>
 </header>
@@ -826,9 +826,23 @@ async function deleteTalent(){
 }
 
 // ── AI API KEY (Google Gemini — free tier) ──
-function getApiKey(){let k=localStorage.getItem('atoure_gemini_key')||'';if(!k){k=prompt('Enter your Google Gemini API key:\n\n1. Go to aistudio.google.com\n2. Sign in with Google\n3. Click \'Get API key\'\n4. Copy and paste it here\n\nIt\'s free — no card needed.');if(k)localStorage.setItem('atoure_gemini_key',k.trim());}return(k||'').trim();}
+function getApiKey(){return(localStorage.getItem('atoure_gemini_key')||'').trim();}
+function openApiModal(){
+  const existing=getApiKey();
+  document.getElementById('apiKeyInput').value=existing;
+  document.getElementById('apiKeyCurrent').textContent=existing?'Current key: '+existing.slice(0,12)+'…':'No key saved yet';
+  document.getElementById('apiKeyOverlay').style.display='flex';
+  setTimeout(()=>document.getElementById('apiKeyInput').focus(),100);
+}
+function closeApiModal(){document.getElementById('apiKeyOverlay').style.display='none';}
+function saveApiKey(){
+  const k=document.getElementById('apiKeyInput').value.trim();
+  if(!k){showToast('Please enter a key');return;}
+  localStorage.setItem('atoure_gemini_key',k);
+  closeApiModal();showToast('✓ API key saved');
+}
 async function aiCall(prompt,useSearch=true){
-  const key=getApiKey();if(!key)return'';
+  const key=getApiKey();if(!key){openApiModal();return'';}
   const body={contents:[{role:'user',parts:[{text:prompt}]}]};
   if(useSearch)body.tools=[{google_search:{}}];
   try{
@@ -1091,7 +1105,7 @@ function handleHInput(el){
   const count=Object.keys(handleChanges).length;document.getElementById('handleSaveBtn').textContent=count>0?'✓ Save '+count+' Change'+(count!==1?'s':''):'✓ Save Handles';
 }
 async function aiLookupAllHandles(){
-  if(!getApiKey()){return;}
+  if(!getApiKey()){openApiModal();return;}
   const fullyEmpty=db.filter(t=>!t.instagram&&!t.tiktok_handle&&!t.youtube_handle&&!(t.instagram_followers||t.tiktok_followers||t.youtube_followers));
   const missingHandles=db.filter(t=>!fullyEmpty.includes(t)&&(!t.tiktok_handle&&!t.youtube_handle));
   const missing=[...fullyEmpty,...missingHandles];
@@ -1289,5 +1303,21 @@ setInterval(pullFromSheets, 5 * 60 * 1000);
 // Re-pull whenever the user switches back to this tab
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pullFromSheets(); });
 </script>
+
+<!-- API Key Modal -->
+<div id="apiKeyOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border2);padding:32px;width:480px;max-width:90vw;position:relative">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--text);margin-bottom:6px">Gemini API Key</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:20px;line-height:1.6">
+      Free at <strong style="color:var(--gold)">aistudio.google.com</strong> → Get API key → Create API key → Default Gemini Project
+    </div>
+    <input id="apiKeyInput" type="text" placeholder="AIzaSy…" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:10px 14px;font-family:'DM Mono',monospace;font-size:13px;outline:none;margin-bottom:16px">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="closeApiModal()">Cancel</button>
+      <button class="btn primary" onclick="saveApiKey()">Save Key</button>
+    </div>
+    <div id="apiKeyCurrent" style="font-size:10px;color:var(--muted);margin-top:12px;text-align:center"></div>
+  </div>
+</div>
 </body>
 </html>
