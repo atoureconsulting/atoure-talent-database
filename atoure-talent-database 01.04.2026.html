@@ -832,13 +832,20 @@ async function aiCall(prompt,useSearch=true){
   const body={contents:[{role:'user',parts:[{text:prompt}]}]};
   if(useSearch)body.tools=[{google_search:{}}];
   try{
-    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const data=await res.json();
-    if(data.error)throw new Error(data.error.message);
+    if(data.error){console.error('Gemini API error:',data.error);throw new Error(data.error.message);}
     let text='';
     for(const part of data.candidates?.[0]?.content?.parts||[]){if(part.text)text+=part.text;}
     return text.trim();
   }catch(e){console.error('Gemini error:',e);throw e;}
+}
+function extractJSON(text){
+  // Strip markdown code fences if present
+  const stripped=text.replace(/```(?:json)?\s*/gi,'').replace(/```/g,'').trim();
+  // Try greedy match to get the largest JSON object
+  const m=stripped.match(/\{[\s\S]*\}/);
+  return m?m[0]:null;
 }
 
 // ── BIO GENERATOR ──
@@ -882,9 +889,9 @@ Return the actual numbers found. Return ONLY JSON (no markdown):
 {"instagram_followers":number,"tiktok_followers":number,"youtube_followers":number,"instagram":"handle","tiktok_handle":"handle","youtube_handle":"@channel","photo_url":"url or empty","confidence":"high/medium/low","notes":"source"}`;
   try{
     const text=await aiCall(prompt,true);
-    const match=text.match(/\{[\s\S]*\}/);
-    if(!match)throw new Error('No JSON');
-    const d=JSON.parse(match[0]);
+    const raw=extractJSON(text);
+    if(!raw)throw new Error('No JSON in response');
+    const d=JSON.parse(raw);
     if(d.instagram_followers)document.getElementById('eIgF').value=d.instagram_followers;
     if(d.tiktok_followers)document.getElementById('eTtF').value=d.tiktok_followers;
     if(d.youtube_followers)document.getElementById('eYtF').value=d.youtube_followers;
@@ -915,9 +922,9 @@ async function bulkRefreshAll(){
       const igH=t.instagram?'@'+t.instagram:'';
       const prompt=`Current social media follower counts for ${t.name}${igH?' (Instagram: '+igH+')':''}. Search the web and return ONLY JSON: {"instagram_followers":number,"tiktok_followers":number,"youtube_followers":number,"confidence":"high/medium/low"}. Use 0 if not found.`;
       const text=await aiCall(prompt,true);
-      const match=text.match(/\{[\s\S]*?\}/);
+      const match=extractJSON(text);
       if(match){
-        const d=JSON.parse(match[0]);
+        const d=JSON.parse(match);
         const ni=d.instagram_followers||0,nt=d.tiktok_followers||0,ny=d.youtube_followers||0;
         const oi=t.instagram_followers||0,ot=t.tiktok_followers||0,oy=t.youtube_followers||0;
         const hasChange=(ni!==oi&&ni>0)||(nt!==ot&&nt>0)||(ny!==oy&&ny>0);
@@ -1105,9 +1112,9 @@ async function aiLookupAllHandles(){
         maxTok=100;
       }
       const text=await aiCall(prompt,true);
-      const match=text.match(/\{[\s\S]*?\}/);
+      const match=extractJSON(text);
       if(match){
-        const d=JSON.parse(match[0]);
+        const d=JSON.parse(match);
         if(!handleChanges[t.id])handleChanges[t.id]={};
         if(d.instagram){handleChanges[t.id].instagram=d.instagram.replace('@','');aiFilledHandles.add(t.id+'_instagram');}
         if(d.tiktok_handle){handleChanges[t.id].tiktok_handle=d.tiktok_handle.replace('@','');aiFilledHandles.add(t.id+'_tiktok_handle');}
@@ -1127,7 +1134,7 @@ async function aiLookupAllHandles(){
   }
   renderHandleList();
   const found=Object.keys(handleChanges).length;
-  document.getElementById('handleStatus').textContent='✦ AI filled info for '+found+' talent — review then save';
+  document.getElementById('handleStatus').textContent=found>0?'✦ AI filled info for '+found+' talent — review then save':'⚠ No results — check the browser console (F12) for errors';
   document.getElementById('handleSaveBtn').textContent=found>0?'✓ Save '+found+' Change'+(found!==1?'s':''):'✓ Save Handles';
   btn.textContent='✦ AI Fill Missing';btn.disabled=false;
 }
@@ -1151,8 +1158,8 @@ Search the web and return ONLY a valid JSON object (no markdown):
 {"name":"Full name","instagram":"handle without @","tiktok_handle":"handle without @, or empty","youtube_handle":"@channel or empty","instagram_followers":number or 0,"tiktok_followers":number or 0,"youtube_followers":number or 0,"country":"Country name(s)","role":"Content Creator, Artist, or Presenter","photo_url":"direct URL or empty","bio":"1-2 sentence description","confidence":"high/medium/low","notes":"any caveats"}`;
   try{
     const text=await aiCall(prompt,true);
-    const match=text.match(/\{[\s\S]*\}/);if(!match)throw new Error('No JSON');
-    aiData=JSON.parse(match[0]);showAIResult(aiData);
+    const raw2=extractJSON(text);if(!raw2)throw new Error('No JSON in response');
+    aiData=JSON.parse(raw2);showAIResult(aiData);
   }catch(e){document.getElementById('aiStatus').textContent='⚠ Could not retrieve data. Try a more specific name.';console.error(e);}
   btn.textContent='Search';btn.disabled=false;
 }
