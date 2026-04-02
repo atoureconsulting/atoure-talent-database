@@ -289,6 +289,9 @@ function fmtCountry(c){if(!c)return'';const f=getFlags(c);return f?f+' '+c:c;}
 function fmt(n){if(!n||n===0)return null;if(n>=1000000)return(n/1000000).toFixed(1).replace(/\.0$/,'')+'M';if(n>=1000)return(n/1000).toFixed(1).replace(/\.0$/,'')+'K';return n.toLocaleString();}
 function total(t){return(t.instagram_followers||0)+(t.tiktok_followers||0)+(t.youtube_followers||0);}
 function initials(n){return(n||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();}
+const GITHUB_PHOTOS_BASE='https://raw.githubusercontent.com/atoureconsulting/atoure-talent-database/main/Photos/';
+const PHOTO_MAP={'Ashton Hall':'Ashton Hall.jpg','Vanessa Mdee':'Vanessa Mdee.jpg','Mohamad Adnan':'mohammed adnan.jpg','Rotimi':'Rotimi.jpg','Deji':'deji.jpg','Bash':'bash the enternainer.jpg','Omar Abdulrahman':'omar abuz.jpg','Ali Mousa':'ali musa.jpg','Isaac Ajimotokin':'manlikeisaac.jpg','Sheilah Gashumba':'Sheilah_Gashumba.jpg','Jeleel':'jeleel.jpg','Abdullahi Maina':'itsyaboymaina.jpg','Bilal El Haddad':'bilal haddad.jpg','Thogden':'thogden.jpg','Jesse Saah':'jessesaah.jpg','Max Khadar':'maxkhadar.jpg','Mohamed Rashid':'chatmo.jpg','Ish Everything':'isheverything.jpg','Hiba Kane':'hiba kane.jpg','Makai Fray':'mkfray.jpg','Frank':'fok tv.jpg','Afro B':'afro b.webp','Nadir Nahdi':'Nadir-Nahdi.jpg','Titi Kone':'titi kone.jpeg','Oceane':'oceane mnta.jpg','Yohan':'yo4real.jpg','Jokey':'jokebrant.jpg','Lucy Bunyenyezi':'lucy bunyenyezi.jpg','Danny Webber':'danny webber.jpg','Priscilla Anyabu':'Priscilla anyabu.webp','Momo Sayegh':'momo sayegh.jpg','Ak-rame Adechokan':'Blck Apollon.webp','Deji Adeniyi':'deji-adeniyi.jpg','Kaiana':'knvvs-.webp','Emma Angelina':'girlaroundafrica.avif','Bernika Bonane':'kingnika.jpg','Mr Composure (Ade)':'mr composure.jpg','Charlene Smith':'charlene smith.jpg','Heesh':'heesh.a','Jessica Dadie':'jessica Dadie.jpg','David Alorka':'david Alorka.jpg','Big G':'big g.jpg','Dose Of Idris':'doseofidris.jpg','Royal Ramzy':'royalramzy.jpg','Ruben Landim':'ruben landim.jpg','Abdel Aziz Bictogo':'DreamingAbdel .jpeg','Ibi':'ibiu1.jpg','Joel Mensah':'joel mensah.jpg','Ali':'alithepresenter.jpg','Namory Toure':'namory jt.jpg'};
+function resolvePhotoUrl(name,url){return url||(PHOTO_MAP[name]?GITHUB_PHOTOS_BASE+encodeURIComponent(PHOTO_MAP[name]):'');}
 
 let db=[], selectedIds=new Set(), activeDrawerIdx=-1;
 
@@ -303,14 +306,14 @@ async function init(){
         instagram_followers:parseInt(row.instagram_followers)||0,
         tiktok_followers:parseInt(row.tiktok_followers)||0,
         youtube_followers:parseInt(row.youtube_followers)||0,
-        photo_url:(row.photo_url||'').trim(),
+        photo_url:resolvePhotoUrl(row.name,(row.photo_url||'').trim()),
         bio:(row.bio||'').trim(),
         tiktok_handle:(row.tiktok_handle||'').trim(),
         youtube_handle:(row.youtube_handle||'').trim(),
       }));
     } else throw new Error('empty');
   } catch(e){
-    db=SEED.map((t,i)=>({...t,_uid:t.id||t.name||('talent_'+i)}));
+    db=SEED.map((t,i)=>({...t,_uid:t.id||t.name||('talent_'+i),photo_url:resolvePhotoUrl(t.name,t.photo_url||'')}));
   }
   setLoading(90,'Building roster…');
   await new Promise(r=>setTimeout(r,200));
