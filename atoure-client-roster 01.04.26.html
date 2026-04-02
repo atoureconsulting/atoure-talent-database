@@ -301,7 +301,7 @@ async function init(){
     const r=await fetch(SHEETS_URL,{method:'POST',body:JSON.stringify({action:'getAll'}),headers:{'Content-Type':'text/plain'}});
     const data=await r.json();
     if(data.ok&&Array.isArray(data.data)&&data.data.length>0){
-      db=data.data.map((row,i)=>({...row,
+      const sheetDb2=data.data.map((row,i)=>({...row,
         _uid:row.id||row.name||('talent_'+i),
         instagram_followers:parseInt(row.instagram_followers)||0,
         tiktok_followers:parseInt(row.tiktok_followers)||0,
@@ -311,6 +311,10 @@ async function init(){
         tiktok_handle:(row.tiktok_handle||'').trim(),
         youtube_handle:(row.youtube_handle||'').trim(),
       }));
+      const sheetNames2=new Set(sheetDb2.map(t=>(t.name||'').toLowerCase()));
+      const missing2=SEED.filter(s=>!sheetNames2.has((s.name||'').toLowerCase()))
+        .map((d,i)=>({...d,_uid:d.id||d.name||('seed_'+i),photo_url:resolvePhotoUrl(d.name,d.photo_url||'')}));
+      db=[...sheetDb2,...missing2];
     } else throw new Error('empty');
   } catch(e){
     db=SEED.map((t,i)=>({...t,_uid:t.id||t.name||('talent_'+i),photo_url:resolvePhotoUrl(t.name,t.photo_url||'')}));
@@ -517,13 +521,17 @@ async function reSyncRoster(){
     const r=await fetch(SHEETS_URL,{method:'POST',body:JSON.stringify({action:'getAll'}),headers:{'Content-Type':'text/plain'}});
     const data=await r.json();
     if(data.ok&&Array.isArray(data.data)&&data.data.length>0){
-      db=data.data.map((row,i)=>({...row,_uid:row.id||row.name||('talent_'+i),
+      const rsDb=data.data.map((row,i)=>({...row,_uid:row.id||row.name||('talent_'+i),
         instagram_followers:parseInt(row.instagram_followers)||0,
         tiktok_followers:parseInt(row.tiktok_followers)||0,
         youtube_followers:parseInt(row.youtube_followers)||0,
         photo_url:resolvePhotoUrl(row.name,(row.photo_url||'').trim()),
         bio:(row.bio||'').trim(),tiktok_handle:(row.tiktok_handle||'').trim(),
         youtube_handle:(row.youtube_handle||'').trim()}));
+      const rsNames=new Set(rsDb.map(t=>(t.name||'').toLowerCase()));
+      const rsMissing=SEED.filter(s=>!rsNames.has((s.name||'').toLowerCase()))
+        .map((d,i)=>({...d,_uid:d.id||d.name||('seed_'+i),photo_url:resolvePhotoUrl(d.name,d.photo_url||'')}));
+      db=[...rsDb,...rsMissing];
       renderHeroStats();renderGrid();
     }
   }catch(e){}

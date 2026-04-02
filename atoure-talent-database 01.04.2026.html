@@ -602,7 +602,7 @@ async function pullFromSheets(){
   try{
     const r=await sheetsPost({action:'getAll'});
     if(r.ok&&Array.isArray(r.data)&&r.data.length>0){
-      db=r.data.map(row=>({...row,
+      const sheetDb=r.data.map(row=>({...row,
         instagram_followers:parseInt(row.instagram_followers)||0,
         tiktok_followers:parseInt(row.tiktok_followers)||0,
         youtube_followers:parseInt(row.youtube_followers)||0,
@@ -612,6 +612,12 @@ async function pullFromSheets(){
         youtube_handle:(row.youtube_handle||'').trim(),
         notes:(row.notes||'').trim()
       }));
+      const sheetNames=new Set(sheetDb.map(t=>(t.name||'').toLowerCase()));
+      const missing=SEED
+        .filter(s=>!sheetNames.has((s.name||'').toLowerCase()))
+        .map((d,i)=>({...d,id:d.id||('seed_'+i),notes:d.notes||'',bio:d.bio||'',tiktok_handle:d.tiktok_handle||'',youtube_handle:d.youtube_handle||'',photo_url:resolvePhotoUrl(d.name,d.photo_url||'')}));
+      db=[...sheetDb,...missing];
+      if(missing.length>0){missing.forEach(rec=>pushRecord(rec));}
       saveLocal();renderStats();renderAll();
       setSyncUI('ok','Synced · '+new Date().toLocaleTimeString());
       showToast('✓ '+db.length+' records loaded');
