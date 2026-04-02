@@ -825,9 +825,21 @@ async function deleteTalent(){
   showToast('Removed');setSyncUI('busy','Syncing…');deleteRecord(id);
 }
 
-// ── AI API KEY ──
-function getApiKey(){let k=localStorage.getItem('atoure_api_key')||'';if(!k){k=prompt('Enter your Anthropic API key to use AI features:\n(Get yours at console.anthropic.com)');if(k)localStorage.setItem('atoure_api_key',k.trim());}return(k||'').trim();}
-function aiHeaders(){const k=getApiKey();return{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'};}
+// ── AI API KEY (Google Gemini — free tier) ──
+function getApiKey(){let k=localStorage.getItem('atoure_gemini_key')||'';if(!k){k=prompt('Enter your Google Gemini API key:\n\n1. Go to aistudio.google.com\n2. Sign in with Google\n3. Click \'Get API key\'\n4. Copy and paste it here\n\nIt\'s free — no card needed.');if(k)localStorage.setItem('atoure_gemini_key',k.trim());}return(k||'').trim();}
+async function aiCall(prompt,useSearch=true){
+  const key=getApiKey();if(!key)return'';
+  const body={contents:[{role:'user',parts:[{text:prompt}]}]};
+  if(useSearch)body.tools=[{google_search:{}}];
+  try{
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data=await res.json();
+    if(data.error)throw new Error(data.error.message);
+    let text='';
+    for(const part of data.candidates?.[0]?.content?.parts||[]){if(part.text)text+=part.text;}
+    return text.trim();
+  }catch(e){console.error('Gemini error:',e);throw e;}
+}
 
 // ── BIO GENERATOR ──
 async function generateBio(){
@@ -841,16 +853,13 @@ async function generateBio(){
   const btn=document.getElementById('genBioBtn');
   const status=document.getElementById('bioStatus');
   btn.textContent='✦ Writing…';btn.disabled=true;
-  status.textContent='Claude is writing a bio…';
+  status.textContent='Writing bio…';
   const prompt=`Write a short, professional 2-sentence bio for a talent roster for ${name}, a ${role||'content creator'}${country?' from '+country:''}${(ig+tt+yt)>0?' with '+fmt(ig+tt+yt)+' total social media followers':''}.
 The bio should: be written in third person, sound premium and suitable for a talent pitch deck, be concise (max 40 words), NOT mention specific follower numbers.
 Return ONLY the bio text, no quotes, no explanation.`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:aiHeaders(),body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:150,messages:[{role:'user',content:prompt}]})});
-    const data=await res.json();
-    let text='';
-    for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
-    text=text.trim().replace(/^["']|["']$/g,'');
+    let text=await aiCall(prompt,false);
+    text=text.replace(/^["']|["']$/g,'');
     if(text){document.getElementById('eBio').value=text;status.innerHTML='<span style="color:#7ec97e">✓ Bio generated — edit as needed</span>';}
     else status.textContent='⚠ Could not generate — try adding more details';
   }catch(e){status.textContent='⚠ Error generating bio';console.error(e);}
@@ -872,9 +881,7 @@ Do these searches: "${name} instagram followers 2025", "${name} tiktok followers
 Return the actual numbers found. Return ONLY JSON (no markdown):
 {"instagram_followers":number,"tiktok_followers":number,"youtube_followers":number,"instagram":"handle","tiktok_handle":"handle","youtube_handle":"@channel","photo_url":"url or empty","confidence":"high/medium/low","notes":"source"}`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:aiHeaders(),body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-    const data=await res.json();
-    let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
+    const text=await aiCall(prompt,true);
     const match=text.match(/\{[\s\S]*\}/);
     if(!match)throw new Error('No JSON');
     const d=JSON.parse(match[0]);
@@ -907,9 +914,7 @@ async function bulkRefreshAll(){
     try{
       const igH=t.instagram?'@'+t.instagram:'';
       const prompt=`Current social media follower counts for ${t.name}${igH?' (Instagram: '+igH+')':''}. Search the web and return ONLY JSON: {"instagram_followers":number,"tiktok_followers":number,"youtube_followers":number,"confidence":"high/medium/low"}. Use 0 if not found.`;
-      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:aiHeaders(),body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-      const data=await res.json();
-      let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
+      const text=await aiCall(prompt,true);
       const match=text.match(/\{[\s\S]*?\}/);
       if(match){
         const d=JSON.parse(match[0]);
@@ -1099,9 +1104,7 @@ async function aiLookupAllHandles(){
         prompt=`Find the TikTok and YouTube handles for ${t.name}${t.instagram?' (Instagram: @'+t.instagram+')':''}${t.country?' from '+t.country:''}. Return ONLY JSON (no markdown): {"tiktok_handle":"handle without @, empty if not found","youtube_handle":"@channel or empty if not found"}`;
         maxTok=100;
       }
-      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:aiHeaders(),body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTok,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-      const data=await res.json();
-      let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
+      const text=await aiCall(prompt,true);
       const match=text.match(/\{[\s\S]*?\}/);
       if(match){
         const d=JSON.parse(match[0]);
@@ -1147,9 +1150,7 @@ async function runAILookup(){
 Search the web and return ONLY a valid JSON object (no markdown):
 {"name":"Full name","instagram":"handle without @","tiktok_handle":"handle without @, or empty","youtube_handle":"@channel or empty","instagram_followers":number or 0,"tiktok_followers":number or 0,"youtube_followers":number or 0,"country":"Country name(s)","role":"Content Creator, Artist, or Presenter","photo_url":"direct URL or empty","bio":"1-2 sentence description","confidence":"high/medium/low","notes":"any caveats"}`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:aiHeaders(),body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-    const data=await res.json();
-    let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
+    const text=await aiCall(prompt,true);
     const match=text.match(/\{[\s\S]*\}/);if(!match)throw new Error('No JSON');
     aiData=JSON.parse(match[0]);showAIResult(aiData);
   }catch(e){document.getElementById('aiStatus').textContent='⚠ Could not retrieve data. Try a more specific name.';console.error(e);}
