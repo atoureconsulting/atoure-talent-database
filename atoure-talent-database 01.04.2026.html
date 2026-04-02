@@ -617,7 +617,20 @@ async function pullFromSheets(){
       const missing=SEED
         .filter(s=>!sheetNames.has((s.name||'').toLowerCase()))
         .map((d,i)=>({...d,id:d.id||('seed_'+i),notes:d.notes||'',bio:d.bio||'',tiktok_handle:d.tiktok_handle||'',youtube_handle:d.youtube_handle||'',photo_url:resolvePhotoUrl(d.name,d.photo_url||'')}));
-      db=[...sheetDb,...missing];
+      // Deduplicate: if two entries share same name (case-insensitive), keep the one with more data
+      const allRecords=[...sheetDb,...missing];
+      const seen=new Map();
+      for(const rec of allRecords){
+        const key=(rec.name||'').toLowerCase().trim();
+        if(!seen.has(key)){seen.set(key,rec);}
+        else{
+          const existing=seen.get(key);
+          const existingScore=(existing.instagram_followers||0)+(existing.tiktok_followers||0)+(existing.youtube_followers||0)+(existing.instagram?1:0)+(existing.bio?1:0)+(existing.country?1:0);
+          const newScore=(rec.instagram_followers||0)+(rec.tiktok_followers||0)+(rec.youtube_followers||0)+(rec.instagram?1:0)+(rec.bio?1:0)+(rec.country?1:0);
+          if(newScore>existingScore)seen.set(key,rec);
+        }
+      }
+      db=Array.from(seen.values());
       if(missing.length>0){missing.forEach(rec=>pushRecord(rec));}
       saveLocal();renderStats();renderAll();
       setSyncUI('ok','Synced · '+new Date().toLocaleTimeString());
