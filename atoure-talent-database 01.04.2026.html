@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AToure — Talent Database</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{--bg:#0a0a0a;--surface:#111;--surface2:#181818;--border:#222;--border2:#2a2a2a;--gold:#c9a84c;--gold2:#e8c97a;--text:#e8e2d9;--muted:#666;--muted2:#444;--ig:#e1306c;--tt:#69c9d0;--yt:#c4302b;--mega:#c9a84c;--macro:#7eb3c9;--mid:#9b7ec9;--micro:#7ec97e;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:"DM Mono",monospace;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+/* HEADER */
+header{border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:80px;position:sticky;top:0;background:rgba(10,10,10,0.96);backdrop-filter:blur(12px);z-index:100;}
+.logo{display:flex;align-items:center;gap:16px;}
+.logo-img{height:64px;width:64px;object-fit:contain;flex-shrink:0;}
+.logo-divider{width:1px;height:36px;background:var(--border2);}
+.logo-name{font-family:"Cormorant Garamond",serif;font-size:22px;color:var(--gold);letter-spacing:0.12em;}
+.logo-sub{font-size:9px;letter-spacing:0.28em;color:var(--muted);text-transform:uppercase;}
+.header-right{display:flex;gap:10px;align-items:center;}
+.sync-pill{display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:0.06em;color:var(--muted);padding:7px 13px;border:1px solid var(--border2);cursor:pointer;transition:border-color 0.2s;}
+.sync-pill:hover{border-color:var(--gold);}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted2);transition:all 0.3s;}
+.sync-dot.ok{background:#7ec97e;box-shadow:0 0 6px #7ec97e66;}
+.sync-dot.busy{background:var(--gold);animation:blink 0.8s infinite;}
+.sync-dot.err{background:var(--ig);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.btn{font-family:"DM Mono",monospace;font-size:11px;letter-spacing:0.1em;padding:8px 16px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.2s;text-transform:uppercase;white-space:nowrap;}
+.btn:hover{border-color:var(--gold);color:var(--gold);}
+.btn.primary{border-color:var(--gold);color:var(--gold);}
+.btn.primary:hover{background:var(--gold);color:var(--bg);}
+.btn.gold-fill{background:var(--gold);color:var(--bg);border-color:var(--gold);}
+.btn.gold-fill:hover{background:var(--gold2);}
+.btn.danger{border-color:var(--yt);color:var(--yt);}
+.btn.danger:hover{background:var(--yt);color:#fff;}
+/* STATS */
+.stats-bar{display:flex;border-bottom:1px solid var(--border);padding:0 40px;overflow-x:auto;}
+.stat-item{padding:20px 32px;border-right:1px solid var(--border);flex-shrink:0;}
+.stat-item:first-child{padding-left:0;}
+.stat-label{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.stat-value{font-family:"Cormorant Garamond",serif;font-size:28px;font-weight:300;color:var(--gold);}
+.stat-value.ig{color:var(--ig);}.stat-value.tt{color:var(--tt);}.stat-value.yt{color:var(--yt);}
+/* DECK BAR */
+.deck-bar{background:#0d0900;border-bottom:1px solid #2a1f00;padding:14px 40px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.deck-bar.hidden{display:none;}
+.deck-count{font-size:11px;color:var(--gold);letter-spacing:0.1em;}
+.deck-pills{display:flex;gap:8px;flex-wrap:wrap;flex:1;}
+.deck-pill{background:#1a1200;border:1px solid #3a2800;color:var(--gold2);font-size:10px;padding:4px 10px;display:flex;align-items:center;gap:6px;}
+.deck-pill-x{cursor:pointer;color:var(--muted);font-size:14px;line-height:1;}
+.deck-pill-x:hover{color:var(--yt);}
+/* TOOLBAR */
+.toolbar{padding:20px 40px;display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.search-wrap{position:relative;flex:1;min-width:200px;max-width:360px;}
+.search-wrap input{width:100%;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:"DM Mono",monospace;font-size:12px;padding:10px 16px 10px 36px;outline:none;transition:border-color 0.2s;}
+.search-wrap input:focus{border-color:var(--gold);}
+.search-wrap input::placeholder{color:var(--muted2);}
+.s-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);}
+.fsel{background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:"DM Mono",monospace;font-size:11px;padding:10px 12px;outline:none;cursor:pointer;}
+.view-toggle{display:flex;border:1px solid var(--border2);}
+.vbtn{padding:9px 14px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;transition:all 0.15s;border-right:1px solid var(--border2);}
+.vbtn:last-child{border-right:none;}
+.vbtn.active{background:var(--surface2);color:var(--gold);}
+.res-count{font-size:11px;color:var(--muted);margin-left:auto;}
+/* GRID */
+.grid-container{padding:32px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1px;background:var(--border);}
+.talent-card{background:var(--bg);padding:24px;cursor:pointer;transition:background 0.15s;position:relative;overflow:hidden;}
+.talent-card::before{content:"";position:absolute;top:0;left:0;width:2px;height:0;background:var(--gold);transition:height 0.3s;}
+.talent-card:hover::before,.talent-card.in-deck::before{height:100%;}
+.talent-card:hover,.talent-card.in-deck{background:var(--surface);}
+.talent-card.in-deck{outline:1px solid var(--gold);}
+.deck-chk{position:absolute;top:12px;right:12px;width:22px;height:22px;border:1px solid var(--border2);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;transition:all 0.15s;}
+.in-deck .deck-chk{background:var(--gold);border-color:var(--gold);color:var(--bg);}
+.card-hdr{display:flex;align-items:center;gap:16px;margin-bottom:16px;}
+.avatar{width:64px;height:64px;min-width:64px;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:24px;color:var(--gold);overflow:hidden;flex-shrink:0;}
+.avatar img,.avatar-sm img{width:100%;height:100%;object-fit:cover;}
+.card-name{font-family:"Cormorant Garamond",serif;font-size:19px;color:var(--text);line-height:1.1;margin-bottom:5px;}
+.card-meta{font-size:13px;color:var(--muted);}
+.tier-badge{display:inline-block;font-size:9px;letter-spacing:0.15em;padding:2px 7px;border:1px solid;text-transform:uppercase;margin-bottom:12px;}
+.tier-MEGA{color:var(--mega);border-color:var(--mega);}.tier-MACRO{color:var(--macro);border-color:var(--macro);}.tier-MID{color:var(--mid);border-color:var(--mid);}.tier-MICRO{color:var(--micro);border-color:var(--micro);}
+.card-stats{display:flex;flex-direction:column;gap:6px;}
+.stat-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;}
+.plat-name{color:var(--muted);display:flex;align-items:center;gap:6px;min-width:80px;}
+.pdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.pdot.ig{background:var(--ig);}.pdot.tt{background:var(--tt);}.pdot.yt{background:var(--yt);}
+.snum{font-family:"Cormorant Garamond",serif;font-size:16px;color:var(--text);}
+.bar-wrap{flex:1;margin:0 10px;height:1px;background:var(--border2);position:relative;}
+.bar-fill{height:100%;position:absolute;top:0;left:0;}
+.bar-fill.ig{background:var(--ig);}.bar-fill.tt{background:var(--tt);}.bar-fill.yt{background:var(--yt);}
+.card-total{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:baseline;}
+.total-lbl{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);}
+.total-num{font-family:"Cormorant Garamond",serif;font-size:22px;color:var(--gold);}
+/* LIST */
+.list-container{padding:0 40px 40px;}
+.list-table{width:100%;border-collapse:collapse;}
+.list-table thead tr{border-bottom:1px solid var(--border2);}
+.list-table th{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);padding:14px 12px;text-align:left;white-space:nowrap;}
+.list-table tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.12s;}
+.list-table tbody tr:hover,.list-table tbody tr.in-deck{background:var(--surface);}
+.list-table tbody tr.in-deck{outline:1px solid var(--gold);}
+.list-table td{padding:14px 12px;font-size:12px;vertical-align:middle;}
+.td-name{display:flex;align-items:center;gap:12px;font-family:"Cormorant Garamond",serif;font-size:16px;}
+.avatar-sm{width:40px;height:40px;min-width:40px;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:16px;color:var(--gold);overflow:hidden;flex-shrink:0;}
+.td-role{color:var(--muted);font-size:11px;}.td-country{font-size:13px;}
+.td-num{font-family:"Cormorant Garamond",serif;font-size:17px;}
+.td-num.total{color:var(--gold);font-size:18px;}.td-zero{color:var(--muted2);font-size:11px;}
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;animation:up .25s ease;}
+@keyframes up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.modal-hdr{padding:28px 32px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:18px;}
+.modal-av{width:80px;height:80px;min-width:80px;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:32px;color:var(--gold);overflow:hidden;flex-shrink:0;}
+.modal-av img{width:100%;height:100%;object-fit:cover;}
+.modal-title{font-family:"Cormorant Garamond",serif;font-size:28px;color:var(--text);margin-bottom:4px;}
+.modal-sub{font-size:11px;color:var(--muted);letter-spacing:0.1em;margin-bottom:8px;}
+.modal-close{margin-left:auto;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px;line-height:1;flex-shrink:0;}
+.modal-close:hover{color:var(--text);}
+.modal-body{padding:24px 32px;}
+.modal-actions{padding:20px 32px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+.field-group{margin-bottom:20px;}
+.field-label{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:block;}
+.field-input{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:"DM Mono",monospace;font-size:13px;padding:10px 14px;outline:none;transition:border-color 0.2s;}
+.field-input:focus{border-color:var(--gold);}
+.field-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;}
+/* PROFILE CARD */
+#profileOverlay .modal{max-width:680px;background:var(--bg);}
+.pmhdr{padding:16px 24px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+.pm-actions{display:flex;gap:8px;align-items:center;}
+.pc-band{background:linear-gradient(135deg,#0e0c00,#1a1500 50%,#0a0a0a);padding:40px;display:flex;gap:32px;align-items:flex-start;border-bottom:1px solid #2a2200;}
+.pc-photo{width:130px;height:130px;min-width:130px;background:var(--surface2);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:52px;color:var(--gold);overflow:hidden;flex-shrink:0;}
+.pc-photo img{width:100%;height:100%;object-fit:cover;}
+.pc-name{font-family:"Cormorant Garamond",serif;font-size:36px;font-weight:300;color:var(--text);line-height:1;margin-bottom:8px;}
+.pc-role{font-size:11px;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-bottom:12px;}
+.pc-country{font-size:15px;color:var(--muted);margin-bottom:16px;}
+.pc-bio{padding:24px 40px;border-bottom:1px solid var(--border);font-size:13px;line-height:1.9;color:#aaa;font-style:italic;min-height:60px;}
+.pc-stats-sec{padding:28px 40px;border-bottom:1px solid var(--border);}
+.pc-sec-title{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;}
+.pc-stat-row{display:flex;align-items:center;gap:16px;margin-bottom:14px;}
+.pc-plat{font-size:11px;color:var(--muted);width:90px;display:flex;align-items:center;gap:8px;letter-spacing:0.08em;}
+.pc-pdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.pc-pdot.ig{background:var(--ig);}.pc-pdot.tt{background:var(--tt);}.pc-pdot.yt{background:var(--yt);}
+.pc-bar{flex:1;height:2px;background:var(--border2);position:relative;border-radius:1px;}
+.pc-bar-fill{height:100%;position:absolute;top:0;left:0;border-radius:1px;}
+.pc-bar-fill.ig{background:linear-gradient(90deg,var(--ig),#ff6b9d);}
+.pc-bar-fill.tt{background:linear-gradient(90deg,var(--tt),#a0eef5);}
+.pc-bar-fill.yt{background:linear-gradient(90deg,var(--yt),#ff6b6b);}
+.pc-snum{font-family:"Cormorant Garamond",serif;font-size:22px;color:var(--text);min-width:70px;text-align:right;}
+.pc-link{font-size:10px;color:var(--muted2);text-decoration:none;letter-spacing:0.05em;transition:color 0.15s;min-width:120px;}
+.pc-link:hover{color:var(--gold);}
+.pc-total-row{padding:20px 40px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:var(--surface);}
+.pc-footer{padding:20px 40px;display:flex;align-items:center;justify-content:space-between;}
+.pc-footer-logo{height:36px;object-fit:contain;opacity:0.7;}
+/* PROGRESS */
+.prog-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column;gap:20px;}
+.prog-overlay.open{display:flex;}
+.prog-title{font-family:"Cormorant Garamond",serif;font-size:28px;color:var(--gold);}
+.prog-sub{font-size:11px;color:var(--muted);letter-spacing:0.1em;}
+.prog-bar-wrap{width:300px;height:2px;background:var(--border2);}
+.prog-bar{height:100%;background:var(--gold);transition:width 0.3s;}
+/* DECK MODAL */
+#deckGenModal .modal{max-width:700px;background:var(--bg);}
+.deck-sum-box{background:var(--surface);border:1px solid var(--border2);padding:20px 24px;display:flex;gap:32px;margin-bottom:24px;flex-wrap:wrap;}
+.deck-sum-item .deck-sum-lbl{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.deck-sum-item .deck-sum-val{font-family:"Cormorant Garamond",serif;font-size:26px;color:var(--gold);}
+.deck-talent-item{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);}
+.deck-talent-item:last-child{border-bottom:none;}
+.deck-talent-num{font-size:11px;color:var(--muted2);width:20px;text-align:right;flex-shrink:0;}
+.deck-talent-name{font-family:"Cormorant Garamond",serif;font-size:17px;color:var(--text);}
+.deck-talent-meta{font-size:10px;color:var(--muted);margin-top:2px;}
+.deck-talent-reach{font-family:"Cormorant Garamond",serif;font-size:20px;color:var(--gold);}
+.deck-field{margin-bottom:20px;}
+.deck-field label{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:block;}
+.deck-field input,.deck-field textarea{width:100%;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:"DM Mono",monospace;font-size:13px;padding:10px 14px;outline:none;transition:border-color 0.2s;}
+.deck-field input:focus,.deck-field textarea:focus{border-color:var(--gold);}
+.deck-field textarea{resize:vertical;line-height:1.6;min-height:80px;}
+/* PDF pages */
+#pdfPages{position:fixed;left:-9999px;top:0;width:794px;pointer-events:none;z-index:-1;}
+.pdf-page{width:794px;min-height:1123px;background:#0a0a0a;font-family:"DM Mono",monospace;overflow:hidden;position:relative;}
+.pdf-cover{background:linear-gradient(160deg,#0a0a0a 0%,#0e0c00 40%,#0a0a0a 100%);display:flex;flex-direction:column;justify-content:space-between;padding:80px;}
+.pdf-cover-logo{width:90px;height:90px;object-fit:contain;}
+.pdf-cover-name{font-family:"Cormorant Garamond",serif;font-size:28px;color:#c9a84c;letter-spacing:0.15em;}
+.pdf-cover-sub2{font-size:10px;letter-spacing:0.35em;color:#666;text-transform:uppercase;}
+.pdf-cover-mid{text-align:center;padding:120px 0 80px;}
+.pdf-cover-label{font-size:10px;letter-spacing:0.4em;color:#666;text-transform:uppercase;margin-bottom:20px;}
+.pdf-cover-title{font-family:"Cormorant Garamond",serif;font-size:52px;font-weight:300;color:#e8e2d9;line-height:1.1;margin-bottom:16px;}
+.pdf-cover-date{font-size:11px;color:#666;letter-spacing:0.15em;}
+.pdf-cover-line{width:60px;height:1px;background:#c9a84c;margin:24px auto;}
+.pdf-cover-bottom{display:flex;justify-content:space-between;align-items:flex-end;}
+.pdf-cover-stat-val{font-family:"Cormorant Garamond",serif;font-size:36px;color:#c9a84c;}
+.pdf-cover-stat-lbl{font-size:9px;letter-spacing:0.2em;color:#666;text-transform:uppercase;margin-top:4px;}
+.pdf-cover-div{width:1px;height:40px;background:#2a2a2a;}
+.pdf-tp{padding:0;}
+.pdf-tp-band{background:linear-gradient(135deg,#0e0c00,#1a1500 50%,#0a0a0a);padding:50px;display:flex;gap:36px;align-items:flex-start;border-bottom:1px solid #2a2200;min-height:220px;}
+.pdf-tp-photo{width:140px;height:140px;min-width:140px;background:#181818;border:2px solid #c9a84c;display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:56px;color:#c9a84c;overflow:hidden;flex-shrink:0;}
+.pdf-tp-photo img{width:100%;height:100%;object-fit:cover;}
+.pdf-tp-name{font-family:"Cormorant Garamond",serif;font-size:42px;font-weight:300;color:#e8e2d9;line-height:1;margin-bottom:10px;}
+.pdf-tp-role{font-size:11px;letter-spacing:0.3em;text-transform:uppercase;color:#c9a84c;margin-bottom:10px;}
+.pdf-tp-country{font-size:15px;color:#666;margin-bottom:18px;}
+.pdf-tp-tier{display:inline-block;font-size:9px;letter-spacing:0.18em;padding:4px 12px;border:1px solid #c9a84c;color:#c9a84c;text-transform:uppercase;}
+.pdf-bio{padding:28px 50px;border-bottom:1px solid #222;font-size:13px;line-height:1.9;color:#999;font-style:italic;min-height:70px;}
+.pdf-stats-sec{padding:32px 50px;border-bottom:1px solid #222;}
+.pdf-stats-title{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:#666;margin-bottom:20px;}
+.pdf-stat-row{display:flex;align-items:center;gap:18px;margin-bottom:16px;}
+.pdf-plat{font-size:11px;color:#666;width:90px;display:flex;align-items:center;gap:8px;}
+.pdf-pdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.pdf-pdot.ig{background:#e1306c;}.pdf-pdot.tt{background:#69c9d0;}.pdf-pdot.yt{background:#c4302b;}
+.pdf-bar-bg{flex:1;height:3px;background:#222;border-radius:2px;position:relative;}
+.pdf-bar-fill{height:100%;border-radius:2px;position:absolute;top:0;left:0;}
+.pdf-bar-fill.ig{background:linear-gradient(90deg,#e1306c,#ff6b9d);}
+.pdf-bar-fill.tt{background:linear-gradient(90deg,#69c9d0,#a0eef5);}
+.pdf-bar-fill.yt{background:linear-gradient(90deg,#c4302b,#ff6b6b);}
+.pdf-stat-count{font-family:"Cormorant Garamond",serif;font-size:24px;color:#e8e2d9;min-width:80px;text-align:right;}
+.pdf-stat-handle{font-size:10px;color:#444;min-width:130px;}
+.pdf-total-row{padding:22px 50px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #222;background:#111;}
+.pdf-total-lbl{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:#666;}
+.pdf-total-num{font-family:"Cormorant Garamond",serif;font-size:36px;color:#c9a84c;}
+.pdf-pg-footer{position:absolute;bottom:0;left:0;right:0;padding:20px 50px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #1a1a1a;}
+.pdf-footer-logo{height:28px;object-fit:contain;opacity:.5;}
+.pdf-footer-text{font-size:9px;letter-spacing:0.15em;color:#333;text-transform:uppercase;}
+.pdf-pg-num{font-size:9px;color:#333;}
+.pdf-sum-page{padding:60px;}
+.pdf-sum-title{font-family:"Cormorant Garamond",serif;font-size:40px;color:#e8e2d9;margin-bottom:6px;}
+.pdf-sum-sub{font-size:10px;letter-spacing:0.25em;color:#666;text-transform:uppercase;margin-bottom:40px;}
+.pdf-sum-stats{display:flex;border:1px solid #2a2a2a;margin-bottom:40px;}
+.pdf-sum-stat{flex:1;padding:24px;border-right:1px solid #2a2a2a;text-align:center;}
+.pdf-sum-stat:last-child{border-right:none;}
+.pdf-sum-stat-val{font-family:"Cormorant Garamond",serif;font-size:32px;color:#c9a84c;margin-bottom:6px;}
+.pdf-sum-stat-lbl{font-size:9px;letter-spacing:0.2em;color:#666;text-transform:uppercase;}
+.pdf-sum-table{width:100%;border-collapse:collapse;}
+.pdf-sum-table th{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#666;padding:10px 12px;text-align:left;border-bottom:1px solid #2a2a2a;}
+.pdf-sum-table td{padding:14px 12px;border-bottom:1px solid #1a1a1a;font-size:12px;color:#aaa;vertical-align:middle;}
+.pdf-sum-table td:first-child{font-family:"Cormorant Garamond",serif;font-size:16px;color:#e8e2d9;}
+.pdf-sum-num{font-family:"Cormorant Garamond",serif;font-size:18px;color:#e8e2d9;}
+.pdf-sum-total{font-family:"Cormorant Garamond",serif;font-size:20px;color:#c9a84c;}
+.pdf-sum-tier{font-size:8px;letter-spacing:0.15em;padding:2px 6px;border:1px solid;text-transform:uppercase;}
+/* MANUAL REFRESH */
+.mr-row{display:flex;align-items:center;border-bottom:1px solid var(--border);transition:background 0.12s;}
+.mr-row:hover{background:var(--surface);}
+.mr-row.mr-dirty{background:#0d0900;}
+.mr-av{width:44px;height:44px;min-width:44px;background:var(--surface2);border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:17px;color:var(--gold);overflow:hidden;flex-shrink:0;}
+.mr-av img{width:100%;height:100%;object-fit:cover;}
+.mr-name-col{width:190px;min-width:190px;padding:12px 16px;border-right:1px solid var(--border);}
+.mr-name{font-family:"Cormorant Garamond",serif;font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mr-role{font-size:9px;color:var(--muted);letter-spacing:0.1em;margin-top:2px;}
+.mr-platforms{display:flex;flex:1;}
+.mr-plat{flex:1;display:flex;align-items:center;border-right:1px solid var(--border);min-width:0;}
+.mr-plat:last-child{border-right:none;}
+.mr-plat-link{display:flex;align-items:center;justify-content:center;width:36px;height:44px;flex-shrink:0;text-decoration:none;font-size:11px;border-right:1px solid var(--border);transition:background 0.15s;}
+.mr-plat-link:hover{background:var(--surface2);}
+.mr-plat-link.ig-link{color:var(--ig);}.mr-plat-link.tt-link{color:var(--tt);}.mr-plat-link.yt-link{color:var(--yt);}
+.mr-plat-link.no-handle{color:var(--muted2);cursor:default;pointer-events:none;}
+.mr-input-wrap{flex:1;display:flex;align-items:center;}
+.mr-input{width:100%;background:transparent;border:none;color:var(--text);font-family:"Cormorant Garamond",serif;font-size:17px;padding:0 12px;outline:none;height:44px;text-align:right;}
+.mr-input:focus{background:var(--surface2);}
+.mr-plat-empty{flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted2);}
+.mr-change-up{color:#7ec97e!important;}.mr-change-down{color:var(--ig)!important;}
+/* HANDLE EDITOR */
+.hr-row{display:flex;align-items:center;border-bottom:1px solid var(--border);transition:background 0.12s;}
+.hr-row:hover{background:var(--surface);}
+.hr-row.hr-dirty{background:#0d0900;}
+.hr-av{width:44px;height:44px;min-width:44px;background:var(--surface2);border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:16px;color:var(--gold);overflow:hidden;flex-shrink:0;}
+.hr-av img{width:100%;height:100%;object-fit:cover;}
+.hr-name-col{width:210px;min-width:210px;padding:10px 16px;border-right:1px solid var(--border);}
+.hr-name{font-family:"Cormorant Garamond",serif;font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hr-meta{font-size:9px;color:var(--muted);margin-top:2px;}
+.hr-cell{flex:1;border-right:1px solid var(--border);display:flex;align-items:center;}
+.hr-cell:last-child{border-right:none;}
+.hr-input{width:100%;background:transparent;border:none;color:var(--text);font-family:"DM Mono",monospace;font-size:12px;padding:0 14px;outline:none;height:44px;}
+.hr-input:focus{background:var(--surface2);}
+.hr-input.ai-filled{color:var(--gold);}
+/* BULK REVIEW */
+.review-row-approved{opacity:1;}.review-row-rejected{opacity:0.4;}
+/* AI MODAL */
+#aiModal .modal{max-width:520px;}
+/* TOAST */
+.toast{position:fixed;bottom:30px;right:30px;background:var(--surface);border:1px solid var(--gold);color:var(--gold);font-size:12px;letter-spacing:0.08em;padding:12px 20px;z-index:999;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+.empty-state{text-align:center;padding:80px 40px;color:var(--muted);font-size:12px;letter-spacing:0.1em;}
+@media(max-width:768px){header,.stats-bar,.toolbar,.grid-container,.list-container{padding-left:20px;padding-right:20px;}
+.grid-container{grid-template-columns:1fr 1fr;}.field-row{grid-template-columns:1fr;}}
+@media(max-width:480px){.grid-container{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <img class="logo-img" src="data:image/png;base64,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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/9k=" alt="AToure">
+    <div class="logo-divider"></div>
+    <div>
+      <div class="logo-name">AT<span style="text-transform:lowercase">oure</span></div>
+      <div class="logo-sub">Management &amp; Consulting</div>
+    </div>
+    <div class="logo-divider"></div>
+    <div class="logo-sub" style="letter-spacing:0.22em;color:var(--muted2)">TALENT DATABASE</div>
+  </div>
+  <div class="header-right">
+    <div class="sync-pill" id="syncPill" onclick="pullFromSheets()">
+      <div class="sync-dot busy" id="syncDot"></div>
+      <span id="syncLabel">Connecting…</span>
+    </div>
+    <button class="btn" onclick="openHandleModal()" style="border-color:var(--ig);color:var(--ig)">@ Handles</button>
+    <button class="btn" onclick="openManualRefresh()" style="border-color:var(--tt);color:var(--tt)">↻ Update Stats</button>
+    <button class="btn" onclick="exportCSV()">↓ CSV</button>
+    <button class="btn" onclick="openAI()" style="border-color:var(--gold);color:var(--gold)">✦ AI Lookup</button>
+    <button class="btn primary" onclick="openAddModal()">+ Add Talent</button>
+  </div>
+</header>
+
+<div class="stats-bar" id="statsBar"></div>
+
+<div class="deck-bar hidden" id="deckBar">
+  <span class="deck-count" id="deckCount">0 selected</span>
+  <div class="deck-pills" id="deckPills"></div>
+  <button class="btn" onclick="clearDeck()">✕ Clear</button>
+  <button class="btn gold-fill" onclick="openDeckModal()">⎙ Generate Deck</button>
+</div>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <span class="s-icon">⌕</span>
+    <input type="text" id="searchInput" placeholder="Search talent, country, handle…" oninput="renderAll()">
+  </div>
+  <select class="fsel" id="roleFilter" onchange="renderAll()">
+    <option value="">All Roles</option>
+    <option>Content Creator</option><option>Artist</option><option>Presenter</option>
+  </select>
+  <select class="fsel" id="tierFilter" onchange="renderAll()">
+    <option value="">All Tiers</option>
+    <option value="MEGA">Mega (10M+)</option><option value="MACRO">Macro (1M–10M)</option>
+    <option value="MID">Mid (100K–1M)</option><option value="MICRO">Micro (&lt;100K)</option>
+  </select>
+  <select class="fsel" id="sortBy" onchange="renderAll()">
+    <option value="total">Sort: Total Reach</option><option value="instagram">Sort: Instagram</option>
+    <option value="tiktok">Sort: TikTok</option><option value="youtube">Sort: YouTube</option>
+    <option value="name">Sort: Name A–Z</option>
+  </select>
+  <div class="view-toggle">
+    <button class="vbtn active" id="btnGrid" onclick="setView('grid')">⊞</button>
+    <button class="vbtn" id="btnList" onclick="setView('list')">≡</button>
+  </div>
+  <button class="btn" id="deckModeBtn" onclick="toggleDeckMode()">＋ Build Deck</button>
+  <span class="res-count" id="resCount"></span>
+</div>
+
+<div id="mainContent"></div>
+
+<!-- PROFILE MODAL -->
+<div class="modal-overlay" id="profileOverlay" onclick="if(event.target===this)closeProfile()">
+  <div class="modal" style="max-width:680px;background:var(--bg);">
+    <div class="pmhdr">
+      <span style="font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted)">Talent Profile</span>
+      <div class="pm-actions">
+        <button class="btn" onclick="addProfileToDeck()" id="addToDeckBtn" style="font-size:10px;padding:6px 12px">＋ Add to Deck</button>
+        <button class="btn" onclick="editFromProfile()" style="font-size:10px;padding:6px 12px">✎ Edit</button>
+        <button class="btn primary" onclick="window.print()" style="font-size:10px;padding:6px 12px">⎙ Print</button>
+        <button class="modal-close" onclick="closeProfile()">×</button>
+      </div>
+    </div>
+    <div id="profileCard"></div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editOverlay" onclick="if(event.target===this)closeEdit()">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-av" id="editAv"></div>
+      <div style="flex:1">
+        <div class="modal-title" id="editTitle"></div>
+        <div class="modal-sub" id="editSub"></div>
+        <div id="editTierEl"></div>
+      </div>
+      <button class="modal-close" onclick="closeEdit()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group"><label class="field-label">Full Name</label><input class="field-input" id="eName" type="text"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        <div><label class="field-label">Role</label><input class="field-input" id="eRole" type="text"></div>
+        <div><label class="field-label">Country</label><input class="field-input" id="eCountry" type="text"></div>
+      </div>
+      <div class="field-group"><label class="field-label">Instagram Handle</label><input class="field-input" id="eIg" type="text" placeholder="@handle"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        <div><label class="field-label">TikTok Handle</label><input class="field-input" id="eTt" type="text" placeholder="@handle"></div>
+        <div><label class="field-label">YouTube Handle</label><input class="field-input" id="eYt" type="text" placeholder="@channel"></div>
+      </div>
+      <div class="field-group"><label class="field-label">Photo URL</label><input class="field-input" id="ePhoto" type="text" placeholder="https://…" oninput="previewPhoto()"></div>
+      <div class="field-group">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label class="field-label" style="margin-bottom:0">Bio</label>
+          <button class="btn" id="genBioBtn" onclick="generateBio()" style="font-size:9px;padding:4px 10px;border-color:var(--gold);color:var(--gold)">✦ Generate Bio</button>
+        </div>
+        <textarea class="field-input" id="eBio" rows="3" placeholder="Short description…" style="resize:vertical;line-height:1.6"></textarea>
+        <div id="bioStatus" style="font-size:10px;color:var(--muted);margin-top:6px;min-height:14px"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="field-label" style="margin-bottom:0">Followers</div>
+        <button class="btn" id="refreshStatsBtn" onclick="refreshFollowers()" style="font-size:9px;padding:4px 10px;border-color:var(--tt);color:var(--tt)">↻ Refresh Stats</button>
+      </div>
+      <div id="refreshStatus" style="font-size:10px;color:var(--muted);margin-bottom:10px;min-height:14px"></div>
+      <div class="field-row">
+        <div><label class="field-label" style="color:var(--ig)">● Instagram</label><input class="field-input" id="eIgF" type="number" min="0"></div>
+        <div><label class="field-label" style="color:var(--tt)">● TikTok</label><input class="field-input" id="eTtF" type="number" min="0"></div>
+        <div><label class="field-label" style="color:var(--yt)">● YouTube</label><input class="field-input" id="eYtF" type="number" min="0"></div>
+      </div>
+      <div class="field-group"><label class="field-label">Notes</label><input class="field-input" id="eNotes" type="text" placeholder="Internal notes…"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" onclick="deleteTalent()" id="deleteBtn">Delete</button>
+      <button class="btn" onclick="closeEdit()">Cancel</button>
+      <button class="btn primary" onclick="saveTalent()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- DECK GENERATOR MODAL -->
+<div class="modal-overlay" id="deckGenModal" onclick="if(event.target===this)closeDeckModal()">
+  <div class="modal" style="max-width:700px;background:var(--bg);">
+    <div class="modal-hdr" style="padding:24px 32px 20px">
+      <div style="flex:1"><div class="modal-title">Generate Pitch Deck</div><div class="modal-sub" id="deckModalSub"></div></div>
+      <button class="modal-close" onclick="closeDeckModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="deck-sum-box" id="deckSumBox"></div>
+      <div class="deck-field"><label>Campaign / Deck Title</label><input type="text" id="deckTitle" placeholder="e.g. AFCON 2025 — Creator Partnership Proposal"></div>
+      <div class="deck-field"><label>Brand / Client Name (optional)</label><input type="text" id="deckBrand" placeholder="e.g. Nike, Pepsi…"></div>
+      <div class="deck-field"><label>Brief / Campaign Description (optional)</label><textarea id="deckBrief" placeholder="Short description of the campaign…"></textarea></div>
+      <div id="deckTalentList"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeDeckModal()">Cancel</button>
+      <button class="btn gold-fill" onclick="generatePDF()">⎙ Generate PDF Deck</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI LOOKUP MODAL -->
+<div class="modal-overlay" id="aiModal" onclick="if(event.target===this)closeAI()">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-hdr" style="padding:24px 28px 18px">
+      <div style="flex:1"><div class="modal-title" style="font-size:22px">✦ AI Talent Lookup</div><div class="modal-sub">Type a name or paste an Instagram/TikTok/YouTube URL</div></div>
+      <button class="modal-close" onclick="closeAI()">×</button>
+    </div>
+    <div class="modal-body" style="padding:20px 28px">
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <input class="field-input" id="aiInput" type="text" placeholder="e.g. Burna Boy or instagram.com/davido" style="flex:1" onkeydown="if(event.key==='Enter')runAILookup()">
+        <button class="btn primary" onclick="runAILookup()" id="aiSearchBtn" style="padding:10px 18px">Search</button>
+      </div>
+      <div id="aiStatus" style="font-size:11px;color:var(--muted);min-height:16px;margin-bottom:12px"></div>
+      <div id="aiResult" style="display:none">
+        <div style="border:1px solid var(--border2);background:var(--bg);padding:20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+            <div id="aiPhotoPreview" style="width:72px;height:72px;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--gold);overflow:hidden;flex-shrink:0"></div>
+            <div><div id="aiName" style="font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--text);margin-bottom:4px"></div><div id="aiRoleCo" style="font-size:11px;color:var(--muted)"></div></div>
+          </div>
+          <div id="aiStatRows"></div>
+        </div>
+        <div id="aiNote" style="font-size:10px;color:var(--muted2);margin-bottom:16px;line-height:1.6"></div>
+      </div>
+    </div>
+    <div class="modal-actions" style="padding:16px 28px">
+      <button class="btn" onclick="closeAI()">Cancel</button>
+      <button class="btn primary" id="aiAddBtn" onclick="addAITalent()" style="display:none">+ Add to Database</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANUAL REFRESH MODAL -->
+<div class="modal-overlay" id="manualRefreshModal">
+  <div class="modal" style="max-width:780px;background:var(--bg);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">
+    <div style="padding:24px 32px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--text)">Update Follower Counts</div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:0.12em;margin-top:3px">Click ↗ to open profile — type the number you see</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input type="text" id="mrSearch" placeholder="Filter talent…" oninput="renderMRList()" style="background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:8px 12px;outline:none;width:180px">
+        <button class="modal-close" onclick="closeManualRefresh()">×</button>
+      </div>
+    </div>
+    <div style="padding:10px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;flex-shrink:0;background:var(--surface)">
+      <span style="font-size:10px;color:var(--muted)" id="mrProgress">0 updated</span>
+      <div style="flex:1;height:2px;background:var(--border2);border-radius:1px"><div id="mrProgBar" style="height:100%;background:var(--gold);border-radius:1px;width:0%;transition:width 0.3s"></div></div>
+      <span style="font-size:10px;color:var(--muted2)" id="mrTotal"></span>
+    </div>
+    <div id="mrList" style="overflow-y:auto;flex:1"></div>
+    <div style="padding:16px 32px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;align-items:center;flex-shrink:0;background:var(--surface)">
+      <span style="font-size:10px;color:var(--muted)" id="mrSaveStatus"></span>
+      <div style="display:flex;gap:10px">
+        <button class="btn" onclick="closeManualRefresh()">Cancel</button>
+        <button class="btn gold-fill" onclick="saveMRChanges()" id="mrSaveBtn">✓ Save All Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HANDLE EDITOR MODAL -->
+<div class="modal-overlay" id="handleModal">
+  <div class="modal" style="max-width:820px;background:var(--bg);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">
+    <div style="padding:24px 32px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--text)">Add Handles</div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:0.12em;margin-top:3px">Add TikTok &amp; YouTube handles for all talent in one place</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn primary" onclick="aiLookupAllHandles()" id="aiHandlesBtn" style="font-size:10px;padding:7px 14px">✦ AI Fill Missing</button>
+        <input type="text" id="handleSearch" placeholder="Filter…" oninput="renderHandleList()" style="background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:8px 12px;outline:none;width:160px">
+        <button class="modal-close" onclick="closeHandleModal()">×</button>
+      </div>
+    </div>
+    <div style="display:flex;border-bottom:1px solid var(--border2);background:var(--surface);flex-shrink:0">
+      <div style="width:44px;flex-shrink:0"></div>
+      <div style="width:210px;min-width:210px;padding:10px 16px;font-size:9px;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;border-right:1px solid var(--border2)">Talent</div>
+      <div style="flex:1;padding:10px 16px;font-size:9px;letter-spacing:0.2em;color:var(--ig);text-transform:uppercase;border-right:1px solid var(--border2)">Instagram</div>
+      <div style="flex:1;padding:10px 16px;font-size:9px;letter-spacing:0.2em;color:var(--tt);text-transform:uppercase;border-right:1px solid var(--border2)">TikTok</div>
+      <div style="flex:1;padding:10px 16px;font-size:9px;letter-spacing:0.2em;color:var(--yt);text-transform:uppercase">YouTube</div>
+    </div>
+    <div id="handleList" style="overflow-y:auto;flex:1"></div>
+    <div style="padding:16px 32px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;align-items:center;flex-shrink:0;background:var(--surface)">
+      <span style="font-size:10px;color:var(--muted)" id="handleStatus"></span>
+      <div style="display:flex;gap:10px">
+        <button class="btn" onclick="closeHandleModal()">Cancel</button>
+        <button class="btn gold-fill" onclick="saveHandles()" id="handleSaveBtn">✓ Save Handles</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BULK PROGRESS -->
+<div class="prog-overlay" id="bulkProgOverlay">
+  <div class="prog-title">Fetching latest stats…</div>
+  <div class="prog-sub" id="bulkProgText">Starting…</div>
+  <div class="prog-sub" id="bulkProgCount"></div>
+  <div class="prog-bar-wrap"><div class="prog-bar" id="bulkProgBar" style="width:0%"></div></div>
+  <div style="font-size:10px;color:var(--muted2);margin-top:8px">You'll review all changes before anything is saved</div>
+</div>
+
+<!-- BULK REVIEW MODAL -->
+<div class="modal-overlay" id="bulkReviewModal">
+  <div class="modal" style="max-width:860px;background:var(--bg);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">
+    <div style="padding:24px 28px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--text)">Review Changes</div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-top:3px" id="bulkReviewTitle"></div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('bulkReviewModal').classList.remove('open')">×</button>
+    </div>
+    <div id="bulkReviewBody" style="overflow-y:auto;flex:1"></div>
+    <div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:var(--surface)">
+      <button class="btn" onclick="document.getElementById('bulkReviewModal').classList.remove('open')">Discard All</button>
+      <button class="btn gold-fill" onclick="confirmBulkRefresh()">✓ Apply Selected Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- DECK PROGRESS -->
+<div class="prog-overlay" id="deckProgOverlay">
+  <div class="prog-title">Building your deck…</div>
+  <div class="prog-sub" id="deckProgSub">Preparing pages</div>
+  <div class="prog-bar-wrap"><div class="prog-bar" id="deckProgBar" style="width:0%"></div></div>
+</div>
+
+<div id="pdfPages"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SHEETS_URL='https://script.google.com/macros/s/AKfycbwXcTHhO1JBzmwlEMJkkwaf3OeG0RkquKGV8-jcLqII1spOkkgImguqCAu_x8XNQT7e2Q/exec';
+const S_DB='atoure_db_v6';
+const LOGO_SRC='data:image/png;base64,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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/9k=';
+const FM={'uk':'🇬🇧','us':'🇺🇸','usa':'🇺🇸','france':'🇫🇷','nigeria':'🇳🇬','ghana':'🇬🇭','tanzania':'🇹🇿','uganda':'🇺🇬','kenya':'🇰🇪','senegal':'🇸🇳','cameroon':'🇨🇲','cote divoire':'🇨🇮','ivory coast':'🇨🇮','congo':'🇨🇩','south africa':'🇿🇦','ethiopia':'🇪🇹','morocco':'🇲🇦','algeria':'🇩🇿','egypt':'🇪🇬','tunisia':'🇹🇳','niger':'🇳🇪','mali':'🇲🇱','guinea':'🇬🇳','somalia':'🇸🇴','sudan':'🇸🇩','rwanda':'🇷🇼','libya':'🇱🇾','germany':'🇩🇪','spain':'🇪🇸','italy':'🇮🇹','portugal':'🇵🇹','netherlands':'🇳🇱','belgium':'🇧🇪','sweden':'🇸🇪','saudi arabia':'🇸🇦','uae':'🇦🇪','qatar':'🇶🇦','jordan':'🇯🇴','india':'🇮🇳','pakistan':'🇵🇰','indonesia':'🇮🇩','malaysia':'🇲🇾','australia':'🇦🇺','canada':'🇨🇦','jamaica':'🇯🇲','guadeloupe':'🇬🇵','yemen':'🇾🇪'};
+function getFlags(c){if(!c)return'';return c.split(',').map(p=>FM[p.trim().toLowerCase()]||'').filter(Boolean).join(' ');}
+function fmtCountry(c){if(!c)return'';const f=getFlags(c);return f?f+'\u00a0'+c:c;}
+function fmt(n){if(!n||n===0)return null;if(n>=1000000)return(n/1000000).toFixed(1).replace(/\.0$/,'')+'M';if(n>=1000)return(n/1000).toFixed(1).replace(/\.0$/,'')+'K';return n.toLocaleString();}
+function total(t){return(t.instagram_followers||0)+(t.tiktok_followers||0)+(t.youtube_followers||0);}
+function tier(t){return t>=10000000?'MEGA':t>=1000000?'MACRO':t>=100000?'MID':'MICRO';}
+function tierColor(ti){return ti==='MEGA'?'#c9a84c':ti==='MACRO'?'#7eb3c9':ti==='MID'?'#9b7ec9':'#7ec97e';}
+function initials(n){return(n||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();}
+function avHtml(t,sm){const cls=sm?'avatar-sm':'avatar';if(t.photo_url)return`<div class="${cls}"><img src="${t.photo_url}" onerror="this.parentNode.innerHTML='${initials(t.name)}'"></div>`;return`<div class="${cls}">${initials(t.name)}</div>`;}
+
+const SEED=[{"name":"Ashton Hall","role":"Content Creator","gender":"Male","instagram":"ashtonhall","instagram_followers":18200000,"tiktok_followers":7200000,"youtube_followers":4120000,"country":"US","photo_url":"","last_updated":"","notes":""},{"name":"Vanessa Mdee","role":"Artist","gender":"Female","instagram":"vanessamdee","instagram_followers":9900000,"tiktok_followers":1500000,"youtube_followers":345000,"country":"Tanzania","photo_url":"","last_updated":"","notes":""},{"name":"Mohamad Adnan","role":"Content Creator","gender":"Male","instagram":"mohdadnan23","instagram_followers":4300000,"tiktok_followers":7300000,"youtube_followers":10400000,"country":"Qatar","photo_url":"","last_updated":"","notes":""},{"name":"Rotimi","role":"Artist","gender":"Male","instagram":"Rotimi","instagram_followers":3700000,"tiktok_followers":1000000,"youtube_followers":1160000,"country":"UK, Nigeria","photo_url":"","last_updated":"","notes":""},{"name":"Deji","role":"Content Creator","gender":"Male","instagram":"deji","instagram_followers":3400000,"tiktok_followers":12500000,"youtube_followers":1200000,"country":"UK, Nigeria","photo_url":"","last_updated":"","notes":""},{"name":"Bash","role":"Content Creator","gender":"Male","instagram":"bashtheentertainer","instagram_followers":3200000,"tiktok_followers":14100000,"youtube_followers":102000,"country":"UK, Congo","photo_url":"","last_updated":"","notes":""},{"name":"Omar Abdulrahman","role":"Content Creator","gender":"Male","instagram":"omar_abuz","instagram_followers":2500000,"tiktok_followers":2900000,"youtube_followers":10000000,"country":"Saudi Arabia","photo_url":"","last_updated":"","notes":""},{"name":"Ali Mousa","role":"Content Creator, Presenter","gender":"Male","instagram":"abu_srwal","instagram_followers":2500000,"tiktok_followers":3300000,"youtube_followers":4240000,"country":"Jordan","photo_url":"","last_updated":"","notes":""},{"name":"Isaac Ajimotokin","role":"Content Creator","gender":"Male","instagram":"manlikeisaac","instagram_followers":2400000,"tiktok_followers":5200000,"youtube_followers":5150000,"country":"UK, Nigeria","photo_url":"","last_updated":"","notes":""},{"name":"Michael Dapaah","role":"Content Creator","gender":"Male","instagram":"michaeldapaah","instagram_followers":1400000,"tiktok_followers":1300000,"youtube_followers":2100000,"country":"Ghana, UK","photo_url":"","last_updated":"","notes":""},{"name":"Sheilah Gashumba","role":"Content Creator","gender":"Female","instagram":"sheilagashumba","instagram_followers":1100000,"tiktok_followers":0,"youtube_followers":0,"country":"Uganda","photo_url":"","last_updated":"","notes":""},{"name":"Jeleel","role":"Artist","gender":"Male","instagram":"jeleel","instagram_followers":1000000,"tiktok_followers":4300000,"youtube_followers":288000,"country":"UK, Nigeria, US","photo_url":"","last_updated":"","notes":""},{"name":"Abdullahi Maina","role":"Content Creator","gender":"Male","instagram":"itsyaboymaina","instagram_followers":943100,"tiktok_followers":14300000,"youtube_followers":40600,"country":"UK, Nigeria","photo_url":"","last_updated":"","notes":""},{"name":"Bilal El Haddad","role":"Content Creator, Presenter","gender":"Male","instagram":"bilalhaddad_1","instagram_followers":801000,"tiktok_followers":227600,"youtube_followers":1200000,"country":"Jordan","photo_url":"","last_updated":"","notes":""},{"name":"Thogden","role":"Content Creator","gender":"Male","instagram":"thogden","instagram_followers":683000,"tiktok_followers":602900,"youtube_followers":2200000,"country":"UK","photo_url":"","last_updated":"","notes":""},{"name":"Sofia London","role":"Content Creator, Presenter","gender":"Female","instagram":"sofialondon","instagram_followers":583000,"tiktok_followers":0,"youtube_followers":0,"country":"UK","photo_url":"","last_updated":"","notes":""},{"name":"Jesse Saah","role":"Content Creator","gender":"Male","instagram":"jessesaah","instagram_followers":554000,"tiktok_followers":2000000,"youtube_followers":412000,"country":"UK, Ghana","photo_url":"","last_updated":"","notes":""},{"name":"Max Khadar","role":"Content Creator, Presenter","gender":"Male","instagram":"maxkhadarr","instagram_followers":533000,"tiktok_followers":104000,"youtube_followers":1600000,"country":"UK, Somalia","photo_url":"","last_updated":"","notes":""},{"name":"Mohamed Rashid","role":"Content Creator","gender":"Male","instagram":"chatmo","instagram_followers":500000,"tiktok_followers":1500000,"youtube_followers":1640000,"country":"Netherlands","photo_url":"","last_updated":"","notes":""},{"name":"Ish Everything","role":"Content Creator","gender":"Male","instagram":"isheverything","instagram_followers":466000,"tiktok_followers":1400000,"youtube_followers":0,"country":"UK, India","photo_url":"","last_updated":"","notes":""},{"name":"Hiba Kane","role":"Content Creator","gender":"Female","instagram":"hibakane","instagram_followers":357000,"tiktok_followers":630000,"youtube_followers":10000,"country":"Algeria, UK","photo_url":"","last_updated":"","notes":""},{"name":"Makai Fray","role":"Content Creator","gender":"Male","instagram":"mkfray","instagram_followers":348000,"tiktok_followers":610500,"youtube_followers":148000,"country":"UK","photo_url":"","last_updated":"","notes":""},{"name":"Frank","role":"Content Creator","gender":"Male","instagram":"fok_tv","instagram_followers":308000,"tiktok_followers":1400000,"youtube_followers":238000,"country":"UK","photo_url":"","last_updated":"","notes":""},{"name":"Afro B","role":"Artist","gender":"Male","instagram":"afrob__","instagram_followers":298000,"tiktok_followers":107500,"youtube_followers":792000,"country":"UK, Cote Divoire","photo_url":"","last_updated":"","notes":""},{"name":"Nadir Nahdi","role":"Content Creator","gender":"Male","instagram":"nadir.nahdi","instagram_followers":277000,"tiktok_followers":0,"youtube_followers":0,"country":"Pakistan, Indonesia, Yemen","photo_url":"","last_updated":"","notes":""},{"name":"Titi Kone","role":"Content Creator","gender":"Male","instagram":"titi_kone","instagram_followers":254000,"tiktok_followers":0,"youtube_followers":0,"country":"Cote Divoire","photo_url":"","last_updated":"","notes":""},{"name":"Oceane","role":"Content Creator","gender":"Female","instagram":"oceanemnta","instagram_followers":229000,"tiktok_followers":352600,"youtube_followers":122000,"country":"Senegal, France","photo_url":"","last_updated":"","notes":""},{"name":"Yohan","role":"Content Creator","gender":"Male","instagram":"yo4real","instagram_followers":204000,"tiktok_followers":316600,"youtube_followers":0,"country":"Guadeloupe","photo_url":"","last_updated":"","notes":""},{"name":"Jokey","role":"Content Creator","gender":"Male","instagram":"jokebrant","instagram_followers":193000,"tiktok_followers":448000,"youtube_followers":0,"country":"France","photo_url":"","last_updated":"","notes":""},{"name":"Lucy Bunyenyezi","role":"Content Creator","gender":"Female","instagram":"lucy_smize","instagram_followers":176000,"tiktok_followers":63400,"youtube_followers":11700,"country":"Uganda","photo_url":"","last_updated":"","notes":""},{"name":"Danny Webber","role":"Content Creator, Presenter","gender":"Male","instagram":"dannywebber81","instagram_followers":165000,"tiktok_followers":0,"youtube_followers":0,"country":"UK","photo_url":"","last_updated":"","notes":""},{"name":"Priscilla Anyabu","role":"Content Creator, Presenter","gender":"Female","instagram":"priscillaanyabu_","instagram_followers":153000,"tiktok_followers":61900,"youtube_followers":7300,"country":"UK, Uganda","photo_url":"","last_updated":"","notes":""},{"name":"Momo Sayegh","role":"Content Creator","gender":"Male","instagram":"mhd.syg","instagram_followers":150000,"tiktok_followers":727600,"youtube_followers":0,"country":"Cote Divoire","photo_url":"","last_updated":"","notes":""},{"name":"Ak-rame Adechokan","role":"Content Creator","gender":"Male","instagram":"blvck_apollon","instagram_followers":133000,"tiktok_followers":272800,"youtube_followers":0,"country":"Cote Divoire","photo_url":"","last_updated":"","notes":""},{"name":"Deji Adeniyi","role":"Content Creator","gender":"Male","instagram":"deji.adeniyi","instagram_followers":132000,"tiktok_followers":71100,"youtube_followers":0,"country":"UK, Nigeria","photo_url":"","last_updated":"","notes":""},{"name":"Kaiana","role":"Content Creator","gender":"Female","instagram":"knvvs","instagram_followers":116000,"tiktok_followers":212700,"youtube_followers":0,"country":"France","photo_url":"","last_updated":"","notes":""},{"name":"Emma Angelina","role":"Content Creator","gender":"Female","instagram":"girlaroundafrica","instagram_followers":107000,"tiktok_followers":0,"youtube_followers":0,"country":"France, Niger, Senegal","photo_url":"","last_updated":"","notes":""},{"name":"Bernika Bonane","role":"Content Creator","gender":"Female","instagram":"_kingnika","instagram_followers":103000,"tiktok_followers":172800,"youtube_followers":0,"country":"Cote Divoire","photo_url":"","last_updated":"","notes":""},{"name":"Mr Composure (Ade)","role":"Content Creator","gender":"Male","instagram":"mr.composure","instagram_followers":96300,"tiktok_followers":816000,"youtube_followers":206000,"country":"UK","photo_url":"","last_updated":"","notes":""},{"name":"Charlene Smith","role":"Presenter","gender":"Female","instagram":"CharleneSmithofficial","instagram_followers":95000,"tiktok_followers":0,"youtube_followers":0,"country":"Jamaica, UK","photo_url":"","last_updated":"","notes":""},{"name":"Heesh","role":"Content Creator","gender":"Male","instagram":"heesh.a","instagram_followers":88500,"tiktok_followers":408000,"youtube_followers":0,"country":"UK, Morocco","photo_url":"","last_updated":"","notes":""},{"name":"Jessica Dadie","role":"Content Creator","gender":"Female","instagram":"pstbadjess","instagram_followers":86700,"tiktok_followers":296000,"youtube_followers":0,"country":"Cote Divoire","photo_url":"","last_updated":"","notes":""},{"name":"David Alorka","role":"Presenter","gender":"Male","instagram":"davidalorka","instagram_followers":84400,"tiktok_followers":0,"youtube_followers":0,"country":"UK","photo_url":"","last_updated":"","notes":""},{"name":"Big G","role":"Content Creator","gender":"Male","instagram":"big_gkam","instagram_followers":70100,"tiktok_followers":0,"youtube_followers":0,"country":"UK, Uganda","photo_url":"","last_updated":"","notes":""},{"name":"Dose Of Idris","role":"Content Creator","gender":"Male","instagram":"doseofidris","instagram_followers":70000,"tiktok_followers":126000,"youtube_followers":0,"country":"UK, Algeria","photo_url":"","last_updated":"","notes":""},{"name":"Royal Ramzy","role":"Content Creator","gender":"Male","instagram":"royalramsey","instagram_followers":28000,"tiktok_followers":465000,"youtube_followers":138000,"country":"UK, Libya","photo_url":"","last_updated":"","notes":""},{"name":"Ruben Landim","role":"Content Creator","gender":"Male","instagram":"rubenlandim","instagram_followers":25800,"tiktok_followers":151100,"youtube_followers":0,"country":"UK, Portugal","photo_url":"","last_updated":"","notes":""},{"name":"Abdel Aziz Bictogo","role":"Content Creator","gender":"Male","instagram":"dreamingabdel","instagram_followers":25300,"tiktok_followers":43500,"youtube_followers":0,"country":"UK, France, Cote Divoire","photo_url":"","last_updated":"","notes":""},{"name":"Ibi","role":"Content Creator","gender":"Male","instagram":"ibiu1","instagram_followers":16000,"tiktok_followers":0,"youtube_followers":0,"country":"UK, India","photo_url":"","last_updated":"","notes":""},{"name":"Joel Mensah","role":"Content Creator, Presenter","gender":"Male","instagram":"joelmensah","instagram_followers":10000,"tiktok_followers":23000,"youtube_followers":0,"country":"UK, Ghana","photo_url":"","last_updated":"","notes":""},{"name":"Ali","role":"Content Creator, Presenter","gender":"Male","instagram":"alithepresenter","instagram_followers":2400,"tiktok_followers":25000,"youtube_followers":0,"country":"UK, Somalia","photo_url":"","last_updated":"","notes":""},{"name":"Namory Toure","role":"Content Creator","gender":"Male","instagram":".namory_jt","instagram_followers":0,"tiktok_followers":64900,"youtube_followers":0,"country":"Cote Divoire","photo_url":"","last_updated":"","notes":""}];
+let db=[],view='grid',editIdx=-1,profileIdx=-1,deckMode=false,deckIds=new Set();
+
+// ── STORAGE ──
+function loadLocal(){
+  try{const s=localStorage.getItem(S_DB);if(s){db=JSON.parse(s);return;}}catch(e){}
+  db=SEED.map((d,i)=>({...d,id:d.id||('s'+i),notes:d.notes||'',bio:d.bio||'',tiktok_handle:d.tiktok_handle||'',youtube_handle:d.youtube_handle||'',photo_url:d.photo_url||''}));
+  saveLocal();
+}
+function saveLocal(){try{localStorage.setItem(S_DB,JSON.stringify(db));}catch(e){}}
+
+// ── SHEETS ──
+async function sheetsPost(body){
+  const r=await fetch(SHEETS_URL,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});
+  return r.json();
+}
+async function pullFromSheets(){
+  setSyncUI('busy','Fetching…');
+  try{
+    const r=await sheetsPost({action:'getAll'});
+    if(r.ok&&Array.isArray(r.data)&&r.data.length>0){
+      db=r.data.map(row=>({...row,
+        instagram_followers:parseInt(row.instagram_followers)||0,
+        tiktok_followers:parseInt(row.tiktok_followers)||0,
+        youtube_followers:parseInt(row.youtube_followers)||0,
+        photo_url:(row.photo_url||'').trim(),
+        bio:(row.bio||'').trim(),
+        tiktok_handle:(row.tiktok_handle||'').trim(),
+        youtube_handle:(row.youtube_handle||'').trim(),
+        notes:(row.notes||'').trim()
+      }));
+      saveLocal();renderStats();renderAll();
+      setSyncUI('ok','Synced · '+new Date().toLocaleTimeString());
+      showToast('✓ '+db.length+' records loaded');
+    } else if(r.ok&&(!r.data||r.data.length===0)){
+      pushAllToSheets();
+    } else throw new Error(r.error||'Empty');
+  }catch(e){setSyncUI('err','Offline');}
+}
+async function pushAllToSheets(){
+  setSyncUI('busy','Uploading…');
+  try{const r=await sheetsPost({action:'bulkInit',records:db});if(r.ok){setSyncUI('ok','Synced');showToast('✓ '+db.length+' uploaded');}else throw new Error(r.error);}
+  catch(e){setSyncUI('err','Upload failed');}
+}
+async function pushRecord(rec){try{await sheetsPost({action:'save',record:rec});setSyncUI('ok','Synced · '+new Date().toLocaleTimeString());}catch(e){setSyncUI('err','Sync failed');}}
+async function deleteRecord(id){try{await sheetsPost({action:'delete',id});setSyncUI('ok','Synced');}catch(e){setSyncUI('err','Delete failed');}}
+function setSyncUI(s,l){document.getElementById('syncDot').className='sync-dot '+s;document.getElementById('syncLabel').textContent=l;}
+
+// ── RENDER ──
+function filtered(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  const r=document.getElementById('roleFilter').value;
+  const ti=document.getElementById('tierFilter').value;
+  const s=document.getElementById('sortBy').value;
+  let l=db.filter(t=>{
+    if(q&&!(t.name||'').toLowerCase().includes(q)&&!(t.country||'').toLowerCase().includes(q)&&!(t.instagram||'').toLowerCase().includes(q))return false;
+    if(r&&!(t.role||'').includes(r))return false;
+    if(ti&&tier(total(t))!==ti)return false;
+    return true;
+  });
+  l.sort((a,b)=>{
+    if(s==='name')return(a.name||'').localeCompare(b.name||'');
+    if(s==='instagram')return(b.instagram_followers||0)-(a.instagram_followers||0);
+    if(s==='tiktok')return(b.tiktok_followers||0)-(a.tiktok_followers||0);
+    if(s==='youtube')return(b.youtube_followers||0)-(a.youtube_followers||0);
+    return total(b)-total(a);
+  });
+  return l;
+}
+function renderStats(){
+  const ig=db.reduce((s,t)=>s+(t.instagram_followers||0),0);
+  const tt=db.reduce((s,t)=>s+(t.tiktok_followers||0),0);
+  const yt=db.reduce((s,t)=>s+(t.youtube_followers||0),0);
+  document.getElementById('statsBar').innerHTML=`
+    <div class="stat-item"><div class="stat-label">Total Talent</div><div class="stat-value">${db.length}</div></div>
+    <div class="stat-item"><div class="stat-label">Combined Reach</div><div class="stat-value">${fmt(ig+tt+yt)||'0'}</div></div>
+    <div class="stat-item"><div class="stat-label">Instagram</div><div class="stat-value ig">${fmt(ig)||'0'}</div></div>
+    <div class="stat-item"><div class="stat-label">TikTok</div><div class="stat-value tt">${fmt(tt)||'0'}</div></div>
+    <div class="stat-item"><div class="stat-label">YouTube</div><div class="stat-value yt">${fmt(yt)||'0'}</div></div>`;
+}
+function renderAll(){
+  const l=filtered();
+  document.getElementById('resCount').textContent=l.length+' of '+db.length+' talent';
+  document.getElementById('mainContent').innerHTML=view==='grid'?renderGrid(l):renderList(l);
+}
+function setView(v){view=v;document.getElementById('btnGrid').classList.toggle('active',v==='grid');document.getElementById('btnList').classList.toggle('active',v==='list');renderAll();}
+
+function renderGrid(l){
+  const mx=Math.max(...db.map(total),1);
+  if(!l.length)return'<div class="empty-state">No talent found.</div>';
+  return`<div class="grid-container">${l.map(t=>{
+    const T=total(t),ti=tier(T),idx=db.indexOf(t),inDeck=deckIds.has(t.id);
+    return`<div class="talent-card${inDeck?' in-deck':''}" onclick="${deckMode?`toggleDeck(${idx})`:`openProfile(${idx})`}">
+      ${deckMode?`<div class="deck-chk">${inDeck?'✓':''}</div>`:''}
+      <div class="card-hdr">${avHtml(t)}<div>
+        <div class="card-name">${t.name}</div>
+        <div class="card-meta">${fmtCountry(t.country||'')}</div>
+      </div></div>
+      <div class="tier-badge tier-${ti}">${ti}</div>
+      <div class="card-stats">
+        <div class="stat-row"><span class="plat-name"><span class="pdot ig"></span>Instagram</span><div class="bar-wrap"><div class="bar-fill ig" style="width:${Math.round(((t.instagram_followers||0)/mx)*100)}%"></div></div><span class="snum">${fmt(t.instagram_followers)||'—'}</span></div>
+        <div class="stat-row"><span class="plat-name"><span class="pdot tt"></span>TikTok</span><div class="bar-wrap"><div class="bar-fill tt" style="width:${Math.round(((t.tiktok_followers||0)/mx)*100)}%"></div></div><span class="snum">${fmt(t.tiktok_followers)||'—'}</span></div>
+        <div class="stat-row"><span class="plat-name"><span class="pdot yt"></span>YouTube</span><div class="bar-wrap"><div class="bar-fill yt" style="width:${Math.round(((t.youtube_followers||0)/mx)*100)}%"></div></div><span class="snum">${fmt(t.youtube_followers)||'—'}</span></div>
+      </div>
+      <div class="card-total"><span class="total-lbl">Total Reach</span><span class="total-num">${fmt(T)||'—'}</span></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+function renderList(l){
+  if(!l.length)return'<div class="empty-state">No talent found.</div>';
+  return`<div class="list-container"><table class="list-table">
+    <thead><tr>${deckMode?'<th></th>':''}<th>#</th><th>Name</th><th>Role</th><th>Country</th><th>Tier</th>
+    <th style="color:var(--ig)">Instagram</th><th style="color:var(--tt)">TikTok</th><th style="color:var(--yt)">YouTube</th><th style="color:var(--gold)">Total</th></tr></thead>
+    <tbody>${l.map((t,i)=>{
+      const T=total(t),ti=tier(T),idx=db.indexOf(t),inDeck=deckIds.has(t.id);
+      return`<tr class="${inDeck?'in-deck':''}" onclick="${deckMode?`toggleDeck(${idx})`:`openProfile(${idx})`}">
+        ${deckMode?`<td><div style="width:20px;height:20px;border:1px solid var(--border2);background:${inDeck?'var(--gold)':'var(--surface2)'};display:flex;align-items:center;justify-content:center;font-size:11px;color:${inDeck?'var(--bg)':'transparent'}">${inDeck?'✓':''}</div></td>`:''}
+        <td style="color:var(--muted2);font-size:11px">${i+1}</td>
+        <td><div class="td-name">${avHtml(t,'sm')} ${t.name}</div></td>
+        <td class="td-role">${t.role||''}</td>
+        <td class="td-country">${fmtCountry(t.country||'')}</td>
+        <td><span class="tier-badge tier-${ti}" style="font-size:8px">${ti}</span></td>
+        <td class="${(t.instagram_followers||0)?'td-num':'td-zero'}">${fmt(t.instagram_followers)||'—'}</td>
+        <td class="${(t.tiktok_followers||0)?'td-num':'td-zero'}">${fmt(t.tiktok_followers)||'—'}</td>
+        <td class="${(t.youtube_followers||0)?'td-num':'td-zero'}">${fmt(t.youtube_followers)||'—'}</td>
+        <td class="td-num total">${fmt(T)||'—'}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+// ── DECK MODE ──
+function toggleDeckMode(){deckMode=!deckMode;const btn=document.getElementById('deckModeBtn');btn.textContent=deckMode?'✕ Exit Deck Mode':'＋ Build Deck';btn.className=deckMode?'btn primary':'btn';if(!deckMode)clearDeck();renderAll();}
+function toggleDeck(idx){const t=db[idx];if(deckIds.has(t.id))deckIds.delete(t.id);else deckIds.add(t.id);updateDeckBar();renderAll();}
+function removeFromDeck(id){deckIds.delete(id);updateDeckBar();renderAll();}
+function clearDeck(){deckIds.clear();updateDeckBar();renderAll();}
+function updateDeckBar(){
+  const sel=db.filter(t=>deckIds.has(t.id));
+  const bar=document.getElementById('deckBar');
+  if(!sel.length){bar.classList.add('hidden');return;}
+  bar.classList.remove('hidden');
+  document.getElementById('deckCount').textContent=sel.length+' selected';
+  document.getElementById('deckPills').innerHTML=sel.map(t=>`<div class="deck-pill">${t.name}<span class="deck-pill-x" onclick="removeFromDeck('${t.id}')">×</span></div>`).join('');
+}
+function addProfileToDeck(){if(profileIdx<0)return;const t=db[profileIdx];deckIds.add(t.id);if(!deckMode){deckMode=true;document.getElementById('deckModeBtn').textContent='✕ Exit Deck Mode';document.getElementById('deckModeBtn').className='btn primary';}updateDeckBar();renderAll();showToast(t.name+' added to deck');}
+
+// ── PROFILE ──
+function openProfile(idx){
+  profileIdx=idx;const t=db[idx];
+  const mx=Math.max(...db.map(total),1);
+  function statRow(cls,label,handle,count,url){
+    if(!count&&!handle)return'';
+    const pct=Math.round(((count||0)/mx)*100);
+    const lnk=url?`<a class="pc-link" href="${url}" target="_blank" style="color:var(--muted2)">@${handle.replace('@','')} ↗</a>`:`<span class="pc-link"></span>`;
+    return`<div class="pc-stat-row"><span class="pc-plat"><span class="pc-pdot ${cls}"></span>${label}</span><div class="pc-bar"><div class="pc-bar-fill ${cls}" style="width:${pct}%"></div></div><span class="pc-snum">${fmt(count)||'—'}</span>${lnk}</div>`;
+  }
+  const photo=t.photo_url?`<div class="pc-photo"><img src="${t.photo_url}" onerror="this.parentNode.innerHTML='${initials(t.name)}'"></div>`:`<div class="pc-photo">${initials(t.name)}</div>`;
+  const T=total(t),ti=tier(T);
+  document.getElementById('profileCard').innerHTML=`
+    <div class="pc-band">${photo}<div>
+      <div class="pc-name">${t.name}</div>
+      <div class="pc-role">${t.role||''}</div>
+      <div class="pc-country">${fmtCountry(t.country||'')}</div>
+      <span class="tier-badge tier-${ti}">${ti} Influencer</span>
+    </div></div>
+    <div class="pc-bio">${t.bio||'<span style="color:var(--muted2)">No bio — click Edit to add one.</span>'}</div>
+    <div class="pc-stats-sec"><div class="pc-sec-title">Social Reach</div>
+      ${statRow('ig','Instagram',t.instagram||'',t.instagram_followers||0,t.instagram?'https://instagram.com/'+t.instagram.replace('@',''):null)}
+      ${statRow('tt','TikTok',t.tiktok_handle||'',t.tiktok_followers||0,t.tiktok_handle?'https://tiktok.com/@'+t.tiktok_handle.replace('@',''):null)}
+      ${statRow('yt','YouTube',t.youtube_handle||'',t.youtube_followers||0,t.youtube_handle?(t.youtube_handle.startsWith('http')?t.youtube_handle:'https://youtube.com/'+t.youtube_handle):null)}
+    </div>
+    <div class="pc-total-row"><span style="font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--muted)">Total Combined Reach</span><span style="font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--gold)">${fmt(T)||'—'}</span></div>
+    <div class="pc-footer"><img class="pc-footer-logo" src="${LOGO_SRC}"><span style="font-size:9px;letter-spacing:0.2em;color:var(--muted2);text-transform:uppercase">AToure Management &amp; Consulting</span></div>`;
+  const inDeck=deckIds.has(t.id);
+  document.getElementById('addToDeckBtn').textContent=inDeck?'✓ In Deck':'＋ Add to Deck';
+  document.getElementById('profileOverlay').classList.add('open');
+}
+function closeProfile(){document.getElementById('profileOverlay').classList.remove('open');}
+function editFromProfile(){closeProfile();openEdit(profileIdx);}
+
+// ── EDIT ──
+function openEdit(idx){
+  editIdx=idx;const t=db[idx];
+  document.getElementById('editTitle').textContent=t.name;
+  document.getElementById('editSub').textContent=(t.instagram?'@'+t.instagram+' · ':'')+fmtCountry(t.country||'');
+  document.getElementById('editTierEl').innerHTML=`<span class="tier-badge tier-${tier(total(t))}">${tier(total(t))}</span>`;
+  const av=document.getElementById('editAv');
+  av.innerHTML=t.photo_url?`<img src="${t.photo_url}" onerror="this.parentNode.innerHTML='${initials(t.name)}'">`  :initials(t.name);
+  document.getElementById('eName').value=t.name||'';
+  document.getElementById('eRole').value=t.role||'';
+  document.getElementById('eCountry').value=t.country||'';
+  document.getElementById('eIg').value='@'+(t.instagram||'');
+  document.getElementById('eTt').value=t.tiktok_handle||'';
+  document.getElementById('eYt').value=t.youtube_handle||'';
+  document.getElementById('ePhoto').value=t.photo_url||'';
+  document.getElementById('eBio').value=t.bio||'';
+  document.getElementById('eIgF').value=t.instagram_followers||'';
+  document.getElementById('eTtF').value=t.tiktok_followers||'';
+  document.getElementById('eYtF').value=t.youtube_followers||'';
+  document.getElementById('eNotes').value=t.notes||'';
+  document.getElementById('deleteBtn').style.display='';
+  document.getElementById('bioStatus').textContent='';
+  document.getElementById('refreshStatus').textContent='';
+  document.getElementById('editOverlay').classList.add('open');
+}
+function openAddModal(){
+  editIdx=-1;
+  ['eName','eRole','eCountry','eIg','eTt','eYt','ePhoto','eBio','eNotes'].forEach(id=>document.getElementById(id).value='');
+  ['eIgF','eTtF','eYtF'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('editTitle').textContent='New Talent';
+  document.getElementById('editSub').textContent='';
+  document.getElementById('editTierEl').innerHTML='';
+  document.getElementById('editAv').innerHTML='+';
+  document.getElementById('deleteBtn').style.display='none';
+  document.getElementById('bioStatus').textContent='';
+  document.getElementById('refreshStatus').textContent='';
+  document.getElementById('editOverlay').classList.add('open');
+}
+function closeEdit(){document.getElementById('editOverlay').classList.remove('open');}
+function previewPhoto(){const url=document.getElementById('ePhoto').value;const name=document.getElementById('eName').value;document.getElementById('editAv').innerHTML=url?`<img src="${url}" onerror="this.parentNode.innerHTML='?'">`  :(name?initials(name):'?');}
+
+async function saveTalent(){
+  const name=document.getElementById('eName').value.trim();
+  if(!name){showToast('Name is required');return;}
+  const rec={id:editIdx>=0?db[editIdx].id:Date.now(),name,role:document.getElementById('eRole').value.trim(),country:document.getElementById('eCountry').value.trim(),instagram:document.getElementById('eIg').value.replace('@','').trim(),tiktok_handle:document.getElementById('eTt').value.replace('@','').trim(),youtube_handle:document.getElementById('eYt').value.trim(),instagram_followers:parseInt(document.getElementById('eIgF').value)||0,tiktok_followers:parseInt(document.getElementById('eTtF').value)||0,youtube_followers:parseInt(document.getElementById('eYtF').value)||0,photo_url:document.getElementById('ePhoto').value.trim(),bio:document.getElementById('eBio').value.trim(),notes:document.getElementById('eNotes').value.trim(),last_updated:new Date().toISOString().split('T')[0],gender:editIdx>=0?(db[editIdx].gender||''):''};
+  if(editIdx>=0)db[editIdx]=rec;else db.push(rec);
+  saveLocal();closeEdit();renderStats();renderAll();
+  showToast(editIdx>=0?'Saved & syncing…':'Added & syncing…');
+  setSyncUI('busy','Saving…');pushRecord(rec);
+}
+async function deleteTalent(){
+  if(editIdx<0)return;
+  if(!confirm('Remove '+db[editIdx].name+'?'))return;
+  const id=db[editIdx].id;db.splice(editIdx,1);
+  saveLocal();closeEdit();renderStats();renderAll();
+  showToast('Removed');setSyncUI('busy','Syncing…');deleteRecord(id);
+}
+
+// ── BIO GENERATOR ──
+async function generateBio(){
+  const name=document.getElementById('eName').value.trim();
+  if(!name){showToast('Enter a name first');return;}
+  const role=document.getElementById('eRole').value.trim();
+  const country=document.getElementById('eCountry').value.trim();
+  const ig=parseInt(document.getElementById('eIgF').value)||0;
+  const tt=parseInt(document.getElementById('eTtF').value)||0;
+  const yt=parseInt(document.getElementById('eYtF').value)||0;
+  const btn=document.getElementById('genBioBtn');
+  const status=document.getElementById('bioStatus');
+  btn.textContent='✦ Writing…';btn.disabled=true;
+  status.textContent='Claude is writing a bio…';
+  const prompt=`Write a short, professional 2-sentence bio for a talent roster for ${name}, a ${role||'content creator'}${country?' from '+country:''}${(ig+tt+yt)>0?' with '+fmt(ig+tt+yt)+' total social media followers':''}.
+The bio should: be written in third person, sound premium and suitable for a talent pitch deck, be concise (max 40 words), NOT mention specific follower numbers.
+Return ONLY the bio text, no quotes, no explanation.`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:150,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    let text='';
+    for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
+    text=text.trim().replace(/^["']|["']$/g,'');
+    if(text){document.getElementById('eBio').value=text;status.innerHTML='<span style="color:#7ec97e">✓ Bio generated — edit as needed</span>';}
+    else status.textContent='⚠ Could not generate — try adding more details';
+  }catch(e){status.textContent='⚠ Error generating bio';console.error(e);}
+  btn.textContent='✦ Regenerate';btn.disabled=false;
+}
+
+// ── REFRESH FOLLOWERS (single) ──
+async function refreshFollowers(){
+  const name=document.getElementById('eName').value.trim();
+  if(!name){showToast('Enter a name first');return;}
+  const igH=document.getElementById('eIg').value.replace('@','').trim();
+  const ttH=document.getElementById('eTt').value.replace('@','').trim();
+  const btn=document.getElementById('refreshStatsBtn');
+  const status=document.getElementById('refreshStatus');
+  btn.textContent='↻ Refreshing…';btn.disabled=true;
+  status.textContent='Searching for latest follower counts…';
+  const prompt=`Search the web RIGHT NOW for the latest follower counts for ${name}.${igH?'\nInstagram: @'+igH:''}${ttH?'\nTikTok: @'+ttH:''}
+Do these searches: "${name} instagram followers 2025", "${name} tiktok followers 2025", "${name} youtube subscribers 2025"
+Return the actual numbers found. Return ONLY JSON (no markdown):
+{"instagram_followers":number,"tiktok_followers":number,"youtube_followers":number,"instagram":"handle","tiktok_handle":"handle","youtube_handle":"@channel","photo_url":"url or empty","confidence":"high/medium/low","notes":"source"}`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
+    const match=text.match(/\{[\s\S]*\}/);
+    if(!match)throw new Error('No JSON');
+    const d=JSON.parse(match[0]);
+    if(d.instagram_followers)document.getElementById('eIgF').value=d.instagram_followers;
+    if(d.tiktok_followers)document.getElementById('eTtF').value=d.tiktok_followers;
+    if(d.youtube_followers)document.getElementById('eYtF').value=d.youtube_followers;
+    if(d.instagram)document.getElementById('eIg').value='@'+d.instagram;
+    if(d.tiktok_handle)document.getElementById('eTt').value=d.tiktok_handle;
+    if(d.youtube_handle)document.getElementById('eYt').value=d.youtube_handle;
+    if(d.photo_url&&!document.getElementById('ePhoto').value){document.getElementById('ePhoto').value=d.photo_url;previewPhoto();}
+    const conf=d.confidence||'low';
+    const cc=conf==='high'?'#7ec97e':conf==='medium'?'#c9a84c':'var(--ig)';
+    status.innerHTML=`<span style="color:${cc}">● ${conf.toUpperCase()} confidence</span>${d.notes?' · '+d.notes:''}`;
+    showToast('✓ Stats refreshed — review then save');
+  }catch(e){status.textContent='⚠ Could not retrieve stats';console.error(e);}
+  btn.textContent='↻ Refresh Stats';btn.disabled=false;
+}
+
+// ── BULK REFRESH ──
+let bulkResults=[];
+async function bulkRefreshAll(){
+  if(!confirm('Fetch latest follower counts for all '+db.length+' talent?\n\nYou will review all changes before anything is saved.'))return;
+  document.getElementById('bulkProgOverlay').classList.add('open');
+  bulkResults=[];
+  for(let i=0;i<db.length;i++){
+    const t=db[i];
+    document.getElementById('bulkProgText').textContent='Fetching '+t.name+'…';
+    document.getElementById('bulkProgCount').textContent=(i+1)+' / '+db.length;
+    document.getElementById('bulkProgBar').style.width=Math.round(((i+1)/db.length)*100)+'%';
+    try{
+      const igH=t.instagram?'@'+t.instagram:'';
+      const prompt=`Current social media follower counts for ${t.name}${igH?' (Instagram: '+igH+')':''}. Search the web and return ONLY JSON: {"instagram_followers":number,"tiktok_followers":number,"youtube_followers":number,"confidence":"high/medium/low"}. Use 0 if not found.`;
+      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
+      const data=await res.json();
+      let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
+      const match=text.match(/\{[\s\S]*?\}/);
+      if(match){
+        const d=JSON.parse(match[0]);
+        const ni=d.instagram_followers||0,nt=d.tiktok_followers||0,ny=d.youtube_followers||0;
+        const oi=t.instagram_followers||0,ot=t.tiktok_followers||0,oy=t.youtube_followers||0;
+        const hasChange=(ni!==oi&&ni>0)||(nt!==ot&&nt>0)||(ny!==oy&&ny>0);
+        bulkResults.push({idx:i,name:t.name,role:t.role||'',photo_url:t.photo_url||'',confidence:d.confidence||'low',hasChange,approved:hasChange,old:{ig:oi,tt:ot,yt:oy},new:{ig:ni,tt:nt,yt:ny}});
+      }
+    }catch(e){console.error('Failed for '+t.name,e);}
+    await new Promise(r=>setTimeout(r,400));
+  }
+  document.getElementById('bulkProgOverlay').classList.remove('open');
+  showBulkReview();
+}
+function showBulkReview(){
+  const changed=bulkResults.filter(r=>r.hasChange);
+  document.getElementById('bulkReviewTitle').textContent=changed.length+' changes found';
+  let rows='';
+  if(!changed.length){
+    rows='<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">No changes detected.</div>';
+  } else {
+    rows=changed.map((r,i)=>{
+      const cc=r.confidence==='high'?'#7ec97e':r.confidence==='medium'?'#c9a84c':'var(--ig)';
+      function diffHtml(oldV,newV){if(oldV===newV)return`<span style="color:var(--muted2)">${fmt(newV)||'—'}</span>`;const d=newV-oldV;const col=d>0?'#7ec97e':'var(--ig)';return`<span style="color:var(--muted2);text-decoration:line-through;font-size:11px">${fmt(oldV)||'—'}</span> <span style="color:${col};font-family:'Cormorant Garamond',serif;font-size:17px">${fmt(newV)||'—'}</span> <span style="color:${col};font-size:10px">${d>0?'↑':'↓'}${fmt(Math.abs(d))}</span>`;}
+      const initls=initials(r.name);
+      return`<tr id="brow_${i}" style="border-bottom:1px solid var(--border);opacity:${r.approved?1:0.4}">
+        <td style="padding:12px 16px"><input type="checkbox" id="bchk_${i}" ${r.approved?'checked':''} onchange="toggleBRow(${i})" style="accent-color:var(--gold);width:16px;height:16px;cursor:pointer"></td>
+        <td style="padding:12px 8px"><div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--gold);overflow:hidden;flex-shrink:0">${r.photo_url?`<img src="${r.photo_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.textContent='${initls}'">`  :initls}</div>
+          <div><div style="font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text)">${r.name}</div><div style="font-size:10px;color:var(--muted)">${r.role}</div></div>
+        </div></td>
+        <td style="padding:12px 8px">${diffHtml(r.old.ig,r.new.ig)}</td>
+        <td style="padding:12px 8px">${diffHtml(r.old.tt,r.new.tt)}</td>
+        <td style="padding:12px 8px">${diffHtml(r.old.yt,r.new.yt)}</td>
+        <td style="padding:12px 8px"><span style="font-size:9px;color:${cc};letter-spacing:0.1em;text-transform:uppercase">● ${r.confidence}</span></td>
+      </tr>`;
+    }).join('');
+    rows=`<div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;background:var(--surface)">
+      <span style="font-size:10px;color:var(--muted)">SELECT ALL</span>
+      <input type="checkbox" id="bchkAll" checked onchange="toggleAllBRows(this.checked)" style="accent-color:var(--gold);width:16px;height:16px;cursor:pointer">
+      <span style="font-size:10px;color:var(--muted2);margin-left:auto">Uncheck any row to skip that update</span>
+    </div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr style="border-bottom:1px solid var(--border2)">
+        <th style="padding:10px 16px;font-size:9px;letter-spacing:0.2em;color:var(--muted);text-align:left"></th>
+        <th style="padding:10px 8px;font-size:9px;letter-spacing:0.2em;color:var(--muted);text-align:left">Talent</th>
+        <th style="padding:10px 8px;font-size:9px;color:var(--ig);text-align:left">Instagram</th>
+        <th style="padding:10px 8px;font-size:9px;color:var(--tt);text-align:left">TikTok</th>
+        <th style="padding:10px 8px;font-size:9px;color:var(--yt);text-align:left">YouTube</th>
+        <th style="padding:10px 8px;font-size:9px;color:var(--muted);text-align:left">Confidence</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  }
+  document.getElementById('bulkReviewBody').innerHTML=rows;
+  document.getElementById('bulkReviewModal').classList.add('open');
+}
+function toggleBRow(i){const chk=document.getElementById('bchk_'+i);bulkResults.filter(r=>r.hasChange)[i].approved=chk.checked;document.getElementById('brow_'+i).style.opacity=chk.checked?'1':'0.4';}
+function toggleAllBRows(val){bulkResults.filter(r=>r.hasChange).forEach((r,i)=>{r.approved=val;const chk=document.getElementById('bchk_'+i);const row=document.getElementById('brow_'+i);if(chk)chk.checked=val;if(row)row.style.opacity=val?'1':'0.4';});}
+function confirmBulkRefresh(){
+  const toApply=bulkResults.filter(r=>r.hasChange&&r.approved);
+  if(!toApply.length){showToast('No changes selected');return;}
+  toApply.forEach(r=>{db[r.idx].instagram_followers=r.new.ig;db[r.idx].tiktok_followers=r.new.tt;db[r.idx].youtube_followers=r.new.yt;db[r.idx].last_updated=new Date().toISOString().split('T')[0];});
+  saveLocal();renderStats();renderAll();
+  pushAllToSheets();
+  document.getElementById('bulkReviewModal').classList.remove('open');
+  showToast('✓ '+toApply.length+' talent updated & syncing…');
+}
+
+// ── MANUAL REFRESH ──
+let mrChanges={};
+function openManualRefresh(){mrChanges={};document.getElementById('mrSearch').value='';document.getElementById('mrSaveStatus').textContent='';renderMRList();updateMRProgress();document.getElementById('manualRefreshModal').classList.add('open');}
+function closeManualRefresh(){document.getElementById('manualRefreshModal').classList.remove('open');}
+function renderMRList(){
+  const q=document.getElementById('mrSearch').value.toLowerCase();
+  const list=db.filter(t=>!q||(t.name||'').toLowerCase().includes(q)||(t.instagram||'').toLowerCase().includes(q));
+  document.getElementById('mrTotal').textContent=list.length+' talent';
+  document.getElementById('mrList').innerHTML=list.map(t=>{
+    const ch=mrChanges[t.id]||{};
+    const curIg=ch.ig!==undefined?ch.ig:(t.instagram_followers||0);
+    const curTt=ch.tt!==undefined?ch.tt:(t.tiktok_followers||0);
+    const curYt=ch.yt!==undefined?ch.yt:(t.youtube_followers||0);
+    const dirty=mrChanges[t.id]!==undefined;
+    const initls=initials(t.name);
+    const photo=t.photo_url?`<img src="${t.photo_url}" onerror="this.parentNode.textContent='${initls}'" style="width:100%;height:100%;object-fit:cover">`  :initls;
+    const igH=(t.instagram||'').replace('@','');
+    const ttH=(t.tiktok_handle||'').replace('@','');
+    const ytH=t.youtube_handle||'';
+    function platCol(cls,handle,curVal,oldVal,field,url){
+      if(!handle)return`<div class="mr-plat"><span class="mr-plat-empty">${cls.toUpperCase()}<br>no handle</span></div>`;
+      const changed=mrChanges[t.id]&&mrChanges[t.id][field]!==undefined;
+      const cc=changed?(curVal>oldVal?'mr-change-up':curVal<oldVal?'mr-change-down':''):'';
+      return`<div class="mr-plat">
+        <a class="mr-plat-link ${cls}-link" href="${url}" target="_blank" title="Open @${handle}">↗</a>
+        <div class="mr-input-wrap"><input class="mr-input ${cc}" type="text"
+          value="${curVal>0?fmtForInput(curVal):''}" placeholder="${oldVal>0?fmtForInput(oldVal):'—'}"
+          data-id="${t.id}" data-field="${field}" data-old="${oldVal}"
+          oninput="handleMRInput(this)" onfocus="this.select()"></div>
+      </div>`;
+    }
+    return`<div class="mr-row${dirty?' mr-dirty':''}" id="mrrow_${t.id}">
+      <div class="mr-av">${photo}</div>
+      <div class="mr-name-col"><div class="mr-name">${t.name}</div><div class="mr-role">${t.role||''} · ${getFlags(t.country||'')}</div></div>
+      <div class="mr-platforms">
+        ${platCol('ig',igH,curIg,t.instagram_followers||0,'ig',igH?'https://instagram.com/'+igH:'#')}
+        ${platCol('tt',ttH,curTt,t.tiktok_followers||0,'tt',ttH?'https://tiktok.com/@'+ttH:'#')}
+        ${platCol('yt',ytH,curYt,t.youtube_followers||0,'yt',ytH?(ytH.startsWith('http')?ytH:'https://youtube.com/'+ytH):'#')}
+      </div>
+    </div>`;
+  }).join('')||'<div style="padding:40px;text-align:center;color:var(--muted)">No talent found</div>';
+}
+function fmtForInput(n){if(!n)return'';if(n>=1000000)return(n/1000000).toFixed(2).replace(/\.?0+$/,'')+'M';if(n>=1000)return(n/1000).toFixed(1).replace(/\.?0+$/,'')+'K';return String(n);}
+function parseInput(val){if(!val||val.trim()==='')return null;const s=val.trim().toUpperCase();if(s.endsWith('M'))return Math.round(parseFloat(s)*1000000);if(s.endsWith('K'))return Math.round(parseFloat(s)*1000);const n=parseFloat(s.replace(/,/g,''));return isNaN(n)?null:Math.round(n);}
+function handleMRInput(el){
+  const id=el.dataset.id,field=el.dataset.field,oldVal=parseInt(el.dataset.old)||0,parsed=parseInput(el.value);
+  if(!mrChanges[id])mrChanges[id]={};
+  if(parsed===null||parsed===oldVal){delete mrChanges[id][field];if(!Object.keys(mrChanges[id]).length)delete mrChanges[id];el.className='mr-input';}
+  else{mrChanges[id][field]=parsed;el.className='mr-input '+(parsed>oldVal?'mr-change-up':'mr-change-down');}
+  const row=document.getElementById('mrrow_'+id);if(row)row.className='mr-row'+(mrChanges[id]?' mr-dirty':'');
+  updateMRProgress();
+}
+function updateMRProgress(){const count=Object.keys(mrChanges).length;document.getElementById('mrProgress').textContent=count+' updated';document.getElementById('mrProgBar').style.width=(db.length>0?Math.round((count/db.length)*100):0)+'%';document.getElementById('mrSaveBtn').textContent=count>0?'✓ Save '+count+' Change'+(count!==1?'s':''):'✓ Save All Changes';}
+async function saveMRChanges(){
+  const count=Object.keys(mrChanges).length;if(!count){closeManualRefresh();return;}
+  Object.entries(mrChanges).forEach(([id,ch])=>{const idx=db.findIndex(t=>String(t.id)===String(id));if(idx<0)return;if(ch.ig!==undefined)db[idx].instagram_followers=ch.ig;if(ch.tt!==undefined)db[idx].tiktok_followers=ch.tt;if(ch.yt!==undefined)db[idx].youtube_followers=ch.yt;db[idx].last_updated=new Date().toISOString().split('T')[0];});
+  saveLocal();renderStats();renderAll();closeManualRefresh();showToast('✓ '+count+' talent updated — syncing…');setSyncUI('busy','Syncing…');pushAllToSheets();
+}
+
+// ── HANDLE EDITOR ──
+let handleChanges={};let aiFilledHandles=new Set();
+function openHandleModal(){handleChanges={};aiFilledHandles.clear();document.getElementById('handleSearch').value='';document.getElementById('handleStatus').textContent='';renderHandleList();document.getElementById('handleModal').classList.add('open');}
+function closeHandleModal(){document.getElementById('handleModal').classList.remove('open');}
+function renderHandleList(){
+  const q=document.getElementById('handleSearch').value.toLowerCase();
+  const list=db.filter(t=>!q||(t.name||'').toLowerCase().includes(q));
+  document.getElementById('handleList').innerHTML=list.map(t=>{
+    const ch=handleChanges[t.id]||{};
+    const igVal=ch.instagram!==undefined?ch.instagram:(t.instagram||'');
+    const ttVal=ch.tiktok_handle!==undefined?ch.tiktok_handle:(t.tiktok_handle||'');
+    const ytVal=ch.youtube_handle!==undefined?ch.youtube_handle:(t.youtube_handle||'');
+    const dirty=handleChanges[t.id]!==undefined;
+    const initls=initials(t.name);
+    const photo=t.photo_url?`<img src="${t.photo_url}" onerror="this.parentNode.textContent='${initls}'" style="width:100%;height:100%;object-fit:cover">`  :initls;
+    function cell(field,val){
+      const aiKey=t.id+'_'+field;
+      const isAI=aiFilledHandles.has(aiKey);
+      const display=val?('@'+val.replace('@','')):'';
+      return`<div class="hr-cell"><input class="hr-input${isAI?' ai-filled':''}" type="text" value="${display}" placeholder="@handle" data-id="${t.id}" data-field="${field}" oninput="handleHInput(this)"></div>`;
+    }
+    return`<div class="hr-row${dirty?' hr-dirty':''}" id="hrrow_${t.id}">
+      <div class="hr-av">${photo}</div>
+      <div class="hr-name-col"><div class="hr-name">${t.name}</div><div class="hr-meta">${t.role||''} · ${getFlags(t.country||'')}</div></div>
+      ${cell('instagram',igVal)}
+      ${cell('tiktok_handle',ttVal)}
+      ${cell('youtube_handle',ytVal)}
+    </div>`;
+  }).join('');
+}
+function handleHInput(el){
+  const id=el.dataset.id,field=el.dataset.field;
+  const stored=el.value.trim().replace(/^@/,'');
+  const orig=field==='instagram'?(db.find(t=>String(t.id)===String(id))?.instagram||''):field==='tiktok_handle'?(db.find(t=>String(t.id)===String(id))?.tiktok_handle||''):(db.find(t=>String(t.id)===String(id))?.youtube_handle||'');
+  if(!handleChanges[id])handleChanges[id]={};
+  if(stored===orig.replace(/^@/,'')){delete handleChanges[id][field];if(!Object.keys(handleChanges[id]).length)delete handleChanges[id];}
+  else handleChanges[id][field]=stored;
+  const row=document.getElementById('hrrow_'+id);if(row)row.className='hr-row'+(handleChanges[id]?' hr-dirty':'');
+  const count=Object.keys(handleChanges).length;document.getElementById('handleSaveBtn').textContent=count>0?'✓ Save '+count+' Change'+(count!==1?'s':''):'✓ Save Handles';
+}
+async function aiLookupAllHandles(){
+  const missing=db.filter(t=>!t.tiktok_handle&&!t.youtube_handle);
+  if(!missing.length){showToast('All talent already have handles');return;}
+  const btn=document.getElementById('aiHandlesBtn');btn.disabled=true;
+  document.getElementById('handleStatus').textContent='AI searching for handles…';
+  let done=0;
+  for(const t of missing){
+    btn.textContent='✦ Looking up '+done+'/'+missing.length+'…';
+    try{
+      const prompt=`Find the TikTok and YouTube handles for ${t.name}${t.instagram?' (Instagram: @'+t.instagram+')':''}${t.country?' from '+t.country:''}.
+Return ONLY JSON (no markdown): {"tiktok_handle":"handle without @, empty string if not found","youtube_handle":"@channel or empty string if not found"}`;
+      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:100,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
+      const data=await res.json();
+      let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
+      const match=text.match(/\{[\s\S]*?\}/);
+      if(match){const d=JSON.parse(match[0]);if(!handleChanges[t.id])handleChanges[t.id]={};if(d.tiktok_handle){handleChanges[t.id].tiktok_handle=d.tiktok_handle.replace('@','');aiFilledHandles.add(t.id+'_tiktok_handle');}if(d.youtube_handle){handleChanges[t.id].youtube_handle=d.youtube_handle;aiFilledHandles.add(t.id+'_youtube_handle');}if(!d.tiktok_handle&&!d.youtube_handle)delete handleChanges[t.id];}
+    }catch(e){console.error('Failed for '+t.name,e);}
+    done++;await new Promise(r=>setTimeout(r,300));
+  }
+  renderHandleList();
+  const found=Object.keys(handleChanges).length;
+  document.getElementById('handleStatus').textContent='✦ AI found handles for '+found+' talent — gold = AI filled';
+  document.getElementById('handleSaveBtn').textContent=found>0?'✓ Save '+found+' Change'+(found!==1?'s':''):'✓ Save Handles';
+  btn.textContent='✦ AI Fill Missing';btn.disabled=false;
+}
+function saveHandles(){
+  const count=Object.keys(handleChanges).length;if(!count){closeHandleModal();return;}
+  Object.entries(handleChanges).forEach(([id,ch])=>{const idx=db.findIndex(t=>String(t.id)===String(id));if(idx<0)return;if(ch.instagram!==undefined)db[idx].instagram=ch.instagram;if(ch.tiktok_handle!==undefined)db[idx].tiktok_handle=ch.tiktok_handle;if(ch.youtube_handle!==undefined)db[idx].youtube_handle=ch.youtube_handle;db[idx].last_updated=new Date().toISOString().split('T')[0];});
+  saveLocal();renderStats();renderAll();closeHandleModal();showToast('✓ '+count+' talent handles updated — syncing…');setSyncUI('busy','Syncing…');pushAllToSheets();
+}
+
+// ── AI LOOKUP ──
+let aiData=null;
+function openAI(){document.getElementById('aiInput').value='';document.getElementById('aiStatus').textContent='';document.getElementById('aiResult').style.display='none';document.getElementById('aiAddBtn').style.display='none';aiData=null;document.getElementById('aiModal').classList.add('open');setTimeout(()=>document.getElementById('aiInput').focus(),100);}
+function closeAI(){document.getElementById('aiModal').classList.remove('open');}
+async function runAILookup(){
+  const q=document.getElementById('aiInput').value.trim();if(!q)return;
+  const btn=document.getElementById('aiSearchBtn');btn.textContent='Searching…';btn.disabled=true;
+  document.getElementById('aiStatus').textContent='🔍 Searching for '+q+'…';
+  document.getElementById('aiResult').style.display='none';document.getElementById('aiAddBtn').style.display='none';aiData=null;
+  const prompt=`You are a talent research assistant. Research the influencer/artist/creator: "${q}"
+Search the web and return ONLY a valid JSON object (no markdown):
+{"name":"Full name","instagram":"handle without @","tiktok_handle":"handle without @, or empty","youtube_handle":"@channel or empty","instagram_followers":number or 0,"tiktok_followers":number or 0,"youtube_followers":number or 0,"country":"Country name(s)","role":"Content Creator, Artist, or Presenter","photo_url":"direct URL or empty","bio":"1-2 sentence description","confidence":"high/medium/low","notes":"any caveats"}`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    let text='';for(const b of data.content||[]){if(b.type==='text')text+=b.text;}
+    const match=text.match(/\{[\s\S]*\}/);if(!match)throw new Error('No JSON');
+    aiData=JSON.parse(match[0]);showAIResult(aiData);
+  }catch(e){document.getElementById('aiStatus').textContent='⚠ Could not retrieve data. Try a more specific name.';console.error(e);}
+  btn.textContent='Search';btn.disabled=false;
+}
+function showAIResult(d){
+  const conf=d.confidence||'low';const cc=conf==='high'?'#7ec97e':conf==='medium'?'#c9a84c':'var(--ig)';
+  document.getElementById('aiStatus').innerHTML=`<span style="color:${cc}">● ${conf.toUpperCase()} confidence</span>${d.notes?' · '+d.notes:''}`;
+  const pe=document.getElementById('aiPhotoPreview');
+  if(d.photo_url)pe.innerHTML=`<img src="${d.photo_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.textContent='${(d.name||'?')[0].toUpperCase()}'">`;
+  else pe.textContent=(d.name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  document.getElementById('aiName').textContent=d.name||'Unknown';
+  document.getElementById('aiRoleCo').textContent=[d.role,d.country].filter(Boolean).join(' · ');
+  const rows=[];
+  if(d.instagram_followers||d.instagram)rows.push(`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--ig)">● Instagram ${d.instagram?'@'+d.instagram:''}</span><span style="font-family:'Cormorant Garamond',serif;font-size:18px">${fmt(d.instagram_followers)||'—'}</span></div>`);
+  if(d.tiktok_followers||d.tiktok_handle)rows.push(`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--tt)">● TikTok ${d.tiktok_handle?'@'+d.tiktok_handle:''}</span><span style="font-family:'Cormorant Garamond',serif;font-size:18px">${fmt(d.tiktok_followers)||'—'}</span></div>`);
+  if(d.youtube_followers||d.youtube_handle)rows.push(`<div style="display:flex;justify-content:space-between;padding:6px 0"><span style="font-size:11px;color:var(--yt)">● YouTube ${d.youtube_handle||''}</span><span style="font-family:'Cormorant Garamond',serif;font-size:18px">${fmt(d.youtube_followers)||'—'}</span></div>`);
+  document.getElementById('aiStatRows').innerHTML=rows.join('');
+  document.getElementById('aiNote').textContent='✓ Review and edit before saving. Follower counts are approximate.';
+  document.getElementById('aiResult').style.display='block';document.getElementById('aiAddBtn').style.display='';
+}
+function addAITalent(){
+  if(!aiData)return;closeAI();
+  const d=aiData;editIdx=-1;
+  document.getElementById('eName').value=d.name||'';document.getElementById('eRole').value=d.role||'';document.getElementById('eCountry').value=d.country||'';
+  document.getElementById('eIg').value=d.instagram?'@'+d.instagram:'';document.getElementById('eTt').value=d.tiktok_handle||'';document.getElementById('eYt').value=d.youtube_handle||'';
+  document.getElementById('ePhoto').value=d.photo_url||'';document.getElementById('eBio').value=d.bio||'';
+  document.getElementById('eIgF').value=d.instagram_followers||'';document.getElementById('eTtF').value=d.tiktok_followers||'';document.getElementById('eYtF').value=d.youtube_followers||'';
+  document.getElementById('eNotes').value='';
+  const av=document.getElementById('editAv');
+  if(d.photo_url)av.innerHTML=`<img src="${d.photo_url}" onerror="this.parentNode.innerHTML='${(d.name||'?')[0]}'">`;
+  else av.textContent=(d.name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  document.getElementById('editTitle').textContent=d.name||'New Talent';
+  document.getElementById('editSub').textContent=(d.instagram?'@'+d.instagram+' · ':'')+fmtCountry(d.country||'');
+  const T=(d.instagram_followers||0)+(d.tiktok_followers||0)+(d.youtube_followers||0);
+  document.getElementById('editTierEl').innerHTML=`<span class="tier-badge tier-${tier(T)}">${tier(T)}</span>`;
+  document.getElementById('deleteBtn').style.display='none';document.getElementById('bioStatus').textContent='';document.getElementById('refreshStatus').textContent='';
+  document.getElementById('editOverlay').classList.add('open');
+}
+
+// ── DECK GENERATOR ──
+function openDeckModal(){
+  const sel=db.filter(t=>deckIds.has(t.id));if(!sel.length){showToast('Select at least one talent first');return;}
+  const tR=sel.reduce((s,t)=>s+total(t),0),tIg=sel.reduce((s,t)=>s+(t.instagram_followers||0),0),tTt=sel.reduce((s,t)=>s+(t.tiktok_followers||0),0),tYt=sel.reduce((s,t)=>s+(t.youtube_followers||0),0);
+  document.getElementById('deckModalSub').textContent=sel.length+' talent · '+fmt(tR)+' combined reach';
+  document.getElementById('deckSumBox').innerHTML=`
+    <div class="deck-sum-item"><div class="deck-sum-lbl">Talent</div><div class="deck-sum-val">${sel.length}</div></div>
+    <div class="deck-sum-item"><div class="deck-sum-lbl">Combined Reach</div><div class="deck-sum-val">${fmt(tR)}</div></div>
+    <div class="deck-sum-item"><div class="deck-sum-lbl">Instagram</div><div class="deck-sum-val" style="color:var(--ig)">${fmt(tIg)}</div></div>
+    <div class="deck-sum-item"><div class="deck-sum-lbl">TikTok</div><div class="deck-sum-val" style="color:var(--tt)">${fmt(tTt)}</div></div>
+    <div class="deck-sum-item"><div class="deck-sum-lbl">YouTube</div><div class="deck-sum-val" style="color:var(--yt)">${fmt(tYt)}</div></div>`;
+  document.getElementById('deckTalentList').innerHTML=sel.map((t,i)=>`<div class="deck-talent-item"><span class="deck-talent-num">${i+1}</span>${avHtml(t,'sm')}<div class="deck-talent-info"><div class="deck-talent-name">${t.name}</div><div class="deck-talent-meta">${t.role||''} · ${fmtCountry(t.country||'')}</div></div><span class="deck-talent-reach">${fmt(total(t))||'—'}</span></div>`).join('');
+  document.getElementById('deckGenModal').classList.add('open');
+}
+function closeDeckModal(){document.getElementById('deckGenModal').classList.remove('open');}
+
+async function generatePDF(){
+  const sel=db.filter(t=>deckIds.has(t.id));if(!sel.length){showToast('No talent selected');return;}
+  const title=document.getElementById('deckTitle').value||'Talent Proposal';
+  const brand=document.getElementById('deckBrand').value||'';
+  const brief=document.getElementById('deckBrief').value||'';
+  closeDeckModal();
+  const prog=document.getElementById('deckProgOverlay');prog.classList.add('open');
+  setDeckProg(5,'Loading libraries…');
+  await new Promise(r=>setTimeout(r,300));
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({orientation:'portrait',unit:'px',format:[794,1123],hotfixes:['px_scaling']});
+  const pages=document.getElementById('pdfPages');pages.innerHTML='';
+  const tR=sel.reduce((s,t)=>s+total(t),0),tIg=sel.reduce((s,t)=>s+(t.instagram_followers||0),0),tTt=sel.reduce((s,t)=>s+(t.tiktok_followers||0),0),tYt=sel.reduce((s,t)=>s+(t.youtube_followers||0),0);
+  const totalPgs=2+sel.length;
+  async function renderPage(el,pgNum,addNew=true){
+    pages.appendChild(el);await document.fonts.ready;await new Promise(r=>setTimeout(r,200));
+    const canvas=await html2canvas(el,{scale:1.5,useCORS:true,allowTaint:true,backgroundColor:'#0a0a0a',logging:false});
+    if(addNew&&pgNum>1)pdf.addPage([794,1123],'px');
+    pdf.addImage(canvas.toDataURL('image/jpeg',.92),'JPEG',0,0,794,1123);
+    pages.removeChild(el);
+  }
+  // Cover
+  setDeckProg(10,'Building cover page…');
+  const cover=document.createElement('div');cover.className='pdf-page pdf-cover';
+  cover.innerHTML=`<div style="display:flex;align-items:center;gap:20px"><img class="pdf-cover-logo" src="${LOGO_SRC}" crossorigin="anonymous"><div><div class="pdf-cover-name">AToure</div><div class="pdf-cover-sub2">Management &amp; Consulting</div></div></div>
+  <div class="pdf-cover-mid">${brand?`<div class="pdf-cover-label">Prepared for ${brand}</div>`:`<div class="pdf-cover-label">Talent Proposal</div>`}<div class="pdf-cover-title">${title}</div>${brief?`<div style="font-size:12px;color:#666;max-width:500px;margin:0 auto;line-height:1.7">${brief}</div>`:''}<div class="pdf-cover-line"></div><div class="pdf-cover-date">${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></div>
+  <div class="pdf-cover-bottom"><div class="pdf-cover-stat"><div class="pdf-cover-stat-val">${sel.length}</div><div class="pdf-cover-stat-lbl">Talent</div></div><div class="pdf-cover-div"></div><div class="pdf-cover-stat"><div class="pdf-cover-stat-val">${fmt(tR)}</div><div class="pdf-cover-stat-lbl">Combined Reach</div></div><div class="pdf-cover-div"></div><div class="pdf-cover-stat"><div class="pdf-cover-stat-val" style="color:#e1306c">${fmt(tIg)}</div><div class="pdf-cover-stat-lbl">Instagram</div></div><div class="pdf-cover-div"></div><div class="pdf-cover-stat"><div class="pdf-cover-stat-val" style="color:#69c9d0">${fmt(tTt)}</div><div class="pdf-cover-stat-lbl">TikTok</div></div><div class="pdf-cover-div"></div><div class="pdf-cover-stat"><div class="pdf-cover-stat-val" style="color:#c4302b">${fmt(tYt)}</div><div class="pdf-cover-stat-lbl">YouTube</div></div></div>`;
+  await renderPage(cover,1,false);
+  // Talent pages
+  const mx=Math.max(...sel.map(total),1);
+  for(let i=0;i<sel.length;i++){
+    const t=sel[i];setDeckProg(Math.round(((i+1)/totalPgs)*80)+10,'Building '+t.name+'…');
+    const igP=Math.round(((t.instagram_followers||0)/mx)*100),ttP=Math.round(((t.tiktok_followers||0)/mx)*100),ytP=Math.round(((t.youtube_followers||0)/mx)*100);
+    function sRow(cls,label,handle,count,pct){if(!count&&!handle)return'';return`<div class="pdf-stat-row"><span class="pdf-plat"><span class="pdf-pdot ${cls}"></span>${label}</span><div class="pdf-bar-bg"><div class="pdf-bar-fill ${cls}" style="width:${pct}%"></div></div><span class="pdf-stat-count">${fmt(count)||'—'}</span><span class="pdf-stat-handle">${handle?'@'+handle.replace('@',''):''}</span></div>`;}
+    const pg=document.createElement('div');pg.className='pdf-page pdf-tp';pg.style.paddingBottom='60px';
+    pg.innerHTML=`<div class="pdf-tp-band">${t.photo_url?`<div class="pdf-tp-photo"><img src="${t.photo_url}" crossorigin="anonymous"></div>`:`<div class="pdf-tp-photo">${initials(t.name)}</div>`}<div><div class="pdf-tp-name">${t.name}</div><div class="pdf-tp-role">${t.role||''}</div><div class="pdf-tp-country">${fmtCountry(t.country||'')}</div><div class="pdf-tp-tier" style="border-color:${tierColor(tier(total(t)))};color:${tierColor(tier(total(t)))}">${tier(total(t))} Influencer</div></div></div>
+    <div class="pdf-bio">${t.bio||'<span style="color:#333">No bio added</span>'}</div>
+    <div class="pdf-stats-sec"><div class="pdf-stats-title">Social Reach</div>${sRow('ig','Instagram',t.instagram||'',t.instagram_followers||0,igP)}${sRow('tt','TikTok',t.tiktok_handle||'',t.tiktok_followers||0,ttP)}${sRow('yt','YouTube',t.youtube_handle||'',t.youtube_followers||0,ytP)}</div>
+    <div class="pdf-total-row"><span class="pdf-total-lbl">Total Combined Reach</span><span class="pdf-total-num">${fmt(total(t))||'—'}</span></div>
+    <div class="pdf-pg-footer"><img class="pdf-footer-logo" src="${LOGO_SRC}" crossorigin="anonymous"><span class="pdf-footer-text">AToure Management &amp; Consulting — Confidential</span><span class="pdf-pg-num">${i+2} / ${totalPgs}</span></div>`;
+    await renderPage(pg,i+2);
+  }
+  // Summary
+  setDeckProg(92,'Building summary page…');
+  const sumPg=document.createElement('div');sumPg.className='pdf-page pdf-sum-page';
+  sumPg.innerHTML=`<div class="pdf-sum-title">Talent Overview</div><div class="pdf-sum-sub">${sel.length} talent · ${title}</div>
+  <div class="pdf-sum-stats"><div class="pdf-sum-stat"><div class="pdf-sum-stat-val">${sel.length}</div><div class="pdf-sum-stat-lbl">Talent</div></div><div class="pdf-sum-stat"><div class="pdf-sum-stat-val">${fmt(tR)}</div><div class="pdf-sum-stat-lbl">Total Reach</div></div><div class="pdf-sum-stat"><div class="pdf-sum-stat-val" style="color:#e1306c">${fmt(tIg)}</div><div class="pdf-sum-stat-lbl">Instagram</div></div><div class="pdf-sum-stat"><div class="pdf-sum-stat-val" style="color:#69c9d0">${fmt(tTt)}</div><div class="pdf-sum-stat-lbl">TikTok</div></div><div class="pdf-sum-stat"><div class="pdf-sum-stat-val" style="color:#c4302b">${fmt(tYt)}</div><div class="pdf-sum-stat-lbl">YouTube</div></div></div>
+  <table class="pdf-sum-table"><thead><tr><th>Name</th><th>Role</th><th>Country</th><th>Tier</th><th>Instagram</th><th>TikTok</th><th>YouTube</th><th>Total</th></tr></thead>
+  <tbody>${sel.map(t=>{const ti=tier(total(t));return`<tr><td>${t.name}</td><td style="color:#666;font-size:11px">${t.role||''}</td><td style="font-size:12px">${fmtCountry(t.country||'')}</td><td><span class="pdf-sum-tier" style="border-color:${tierColor(ti)};color:${tierColor(ti)}">${ti}</span></td><td class="pdf-sum-num">${fmt(t.instagram_followers)||'—'}</td><td class="pdf-sum-num">${fmt(t.tiktok_followers)||'—'}</td><td class="pdf-sum-num">${fmt(t.youtube_followers)||'—'}</td><td class="pdf-sum-total">${fmt(total(t))||'—'}</td></tr>`;}).join('')}</tbody></table>
+  <div class="pdf-pg-footer" style="position:absolute;bottom:0;left:0;right:0;padding:20px 60px"><img class="pdf-footer-logo" src="${LOGO_SRC}" crossorigin="anonymous"><span class="pdf-footer-text">AToure Management &amp; Consulting — Confidential</span><span class="pdf-pg-num">${totalPgs} / ${totalPgs}</span></div>`;
+  await renderPage(sumPg,totalPgs);
+  setDeckProg(98,'Saving PDF…');await new Promise(r=>setTimeout(r,200));
+  pdf.save('AToure-'+title.replace(/[^a-zA-Z0-9]/g,'-')+'-'+new Date().toISOString().split('T')[0]+'.pdf');
+  prog.classList.remove('open');showToast('✓ Deck downloaded — '+sel.length+' talent');
+}
+function setDeckProg(pct,msg){document.getElementById('deckProgBar').style.width=pct+'%';document.getElementById('deckProgSub').textContent=msg;}
+
+// ── CSV ──
+function exportCSV(){
+  const h=['Name','Role','Gender','Country','Instagram','TikTok Handle','YouTube Handle','IG Followers','TT Followers','YT Followers','Total Reach','Tier','Bio','Notes'];
+  const rows=db.map(t=>[t.name,t.role||'',t.gender||'',t.country||'','@'+(t.instagram||''),t.tiktok_handle||'',t.youtube_handle||'',t.instagram_followers||0,t.tiktok_followers||0,t.youtube_followers||0,total(t),tier(total(t)),t.bio||'',t.notes||'']);
+  const csv=[h,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='atoure-talent-'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+  showToast('CSV exported');
+}
+
+// ── UTILS ──
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+loadLocal();renderStats();renderAll();pullFromSheets();
+</script>
+</body>
+</html>
