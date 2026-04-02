@@ -841,12 +841,18 @@ function saveApiKey(){
   localStorage.setItem('atoure_gemini_key',k);
   closeApiModal();showToast('✓ API key saved');
 }
+function clearApiKey(){
+  localStorage.removeItem('atoure_gemini_key');
+  document.getElementById('apiKeyInput').value='';
+  document.getElementById('apiKeyCurrent').textContent='Key cleared — enter a new one below';
+  showToast('Key cleared');
+}
 async function aiCall(prompt,useSearch=true){
   const key=getApiKey();if(!key){openApiModal();return'';}
   const body={contents:[{role:'user',parts:[{text:prompt}]}]};
   if(useSearch)body.tools=[{google_search:{}}];
   try{
-    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const data=await res.json();
     if(data.error){console.error('Gemini API error:',data.error);throw new Error(data.error.message);}
     let text='';
@@ -1313,6 +1319,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
     </div>
     <input id="apiKeyInput" type="text" placeholder="AIzaSy…" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:10px 14px;font-family:'DM Mono',monospace;font-size:13px;outline:none;margin-bottom:16px">
     <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="clearApiKey()" style="margin-right:auto;color:#c44">Clear Key</button>
       <button class="btn" onclick="closeApiModal()">Cancel</button>
       <button class="btn primary" onclick="saveApiKey()">Save Key</button>
     </div>
