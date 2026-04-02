@@ -511,6 +511,25 @@ async function submitEnquiry(){
 function closeEnquireModal(){document.getElementById('enquireModal').classList.remove('open');document.body.style.overflow='';}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 init();
+// Auto-sync: re-pull every 5 minutes while page is open
+async function reSyncRoster(){
+  try{
+    const r=await fetch(SHEETS_URL,{method:'POST',body:JSON.stringify({action:'getAll'}),headers:{'Content-Type':'text/plain'}});
+    const data=await r.json();
+    if(data.ok&&Array.isArray(data.data)&&data.data.length>0){
+      db=data.data.map((row,i)=>({...row,_uid:row.id||row.name||('talent_'+i),
+        instagram_followers:parseInt(row.instagram_followers)||0,
+        tiktok_followers:parseInt(row.tiktok_followers)||0,
+        youtube_followers:parseInt(row.youtube_followers)||0,
+        photo_url:resolvePhotoUrl(row.name,(row.photo_url||'').trim()),
+        bio:(row.bio||'').trim(),tiktok_handle:(row.tiktok_handle||'').trim(),
+        youtube_handle:(row.youtube_handle||'').trim()}));
+      renderHeroStats();renderGrid();
+    }
+  }catch(e){}
+}
+setInterval(reSyncRoster, 5 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reSyncRoster(); });
 </script>
 </body>
 </html>

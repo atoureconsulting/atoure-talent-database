@@ -1240,6 +1240,10 @@ function exportCSV(){
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 
 loadLocal();renderStats();renderAll();pullFromSheets();
+// Auto-sync: re-pull every 5 minutes while page is open
+setInterval(pullFromSheets, 5 * 60 * 1000);
+// Re-pull whenever the user switches back to this tab
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pullFromSheets(); });
 </script>
 </body>
 </html>
