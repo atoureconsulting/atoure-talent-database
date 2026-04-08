@@ -627,31 +627,38 @@ async function pullFromSheets(){
     if(r.ok&&Array.isArray(r.data)&&r.data.length>0){
       console.log('[Sync] first row keys:',Object.keys(r.data[0]));
       console.log('[Sync] first row sample:',JSON.stringify(r.data[0]).slice(0,200));
-      const sheetDb=r.data.map(row=>({...row,
-        instagram_followers:Number(row.instagram_followers)||0,
-        tiktok_followers:Number(row.tiktok_followers)||0,
-        youtube_followers:Number(row.youtube_followers)||0,
-        photo_url:resolvePhotoUrl(row.name,(row.photo_url||'').trim()),
-        bio:(row.bio||'').trim(),
-        tiktok_handle:(row.tiktok_handle||'').trim(),
-        youtube_handle:(row.youtube_handle||'').trim(),
-        notes:(row.notes||'').trim()
-      }));
+      // Build SEED lookup for fallback enrichment
+      const seedByName=new Map(SEED.map(s=>[(s.name||'').toLowerCase().trim(),s]));
+      const score=r=>((r.instagram_followers||0)+(r.tiktok_followers||0)+(r.youtube_followers||0))+(r.instagram?10000:0)+(r.bio?1000:0)+(r.country?100:0);
+      const sheetDb=r.data.map(row=>{
+        const base={...row,
+          instagram_followers:Number(row.instagram_followers)||0,
+          tiktok_followers:Number(row.tiktok_followers)||0,
+          youtube_followers:Number(row.youtube_followers)||0,
+          photo_url:resolvePhotoUrl(row.name,(row.photo_url||'').trim()),
+          bio:(row.bio||'').trim(),
+          tiktok_handle:(row.tiktok_handle||'').trim(),
+          youtube_handle:(row.youtube_handle||'').trim(),
+          notes:(row.notes||'').trim()
+        };
+        // If sheet row is empty/placeholder, use SEED data instead (SEED may have real stats)
+        const seed=seedByName.get((base.name||'').toLowerCase().trim());
+        if(seed&&score(seed)>score(base)){
+          return{...base,...seed,id:base.id||seed.id,photo_url:base.photo_url||resolvePhotoUrl(seed.name,'')};
+        }
+        return base;
+      });
       const sheetNames=new Set(sheetDb.map(t=>(t.name||'').toLowerCase()));
       const missing=SEED
         .filter(s=>!sheetNames.has((s.name||'').toLowerCase()))
         .map((d,i)=>({...d,id:d.id||('seed_'+i),notes:d.notes||'',bio:d.bio||'',tiktok_handle:d.tiktok_handle||'',youtube_handle:d.youtube_handle||'',photo_url:resolvePhotoUrl(d.name,d.photo_url||'')}));
-      // Deduplicate: if two entries share same name (case-insensitive), keep the one with more data
       const allRecords=[...sheetDb,...missing];
       const seen=new Map();
       for(const rec of allRecords){
         const key=(rec.name||'').toLowerCase().trim();
         if(!seen.has(key)){seen.set(key,rec);}
         else{
-          const existing=seen.get(key);
-          const existingScore=(existing.instagram_followers||0)+(existing.tiktok_followers||0)+(existing.youtube_followers||0)+(existing.instagram?1:0)+(existing.bio?1:0)+(existing.country?1:0);
-          const newScore=(rec.instagram_followers||0)+(rec.tiktok_followers||0)+(rec.youtube_followers||0)+(rec.instagram?1:0)+(rec.bio?1:0)+(rec.country?1:0);
-          if(newScore>existingScore)seen.set(key,rec);
+          if(score(rec)>score(seen.get(key)))seen.set(key,rec);
         }
       }
       db=Array.from(seen.values());
