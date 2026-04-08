@@ -17,7 +17,34 @@ var ROSTER_COLS = [
   'photo_url','bio','notes','last_updated'
 ];
 
-// ── Entry point ──────────────────────────────────────────────────────────────
+// ── GET (browser test) ───────────────────────────────────────────────────────
+// Visit the /exec URL in your browser to verify the script is working.
+// It will show row count + first row of data.
+function doGet(e) {
+  var result;
+  try {
+    var sheet = getOrCreateSheet(ROSTER_SHEET);
+    var data  = sheet.getDataRange().getValues();
+    var rowCount = Math.max(0, data.length - 1);
+    var headers  = data.length > 0 ? data[0] : [];
+    var firstRow = data.length > 1 ? data[1] : [];
+    result = {
+      ok: true,
+      spreadsheet: SpreadsheetApp.getActiveSpreadsheet().getName(),
+      sheet: ROSTER_SHEET,
+      rowCount: rowCount,
+      headers: headers,
+      firstRow: firstRow
+    };
+  } catch(err) {
+    result = { ok: false, error: err.message };
+  }
+  return ContentService
+    .createTextOutput(JSON.stringify(result, null, 2))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ── POST (main API) ──────────────────────────────────────────────────────────
 function doPost(e) {
   var result;
   try {
@@ -74,7 +101,8 @@ function save(record) {
     if (String(data[i][idCol]) === String(record.id)) { rowIdx = i + 1; break; }
   }
 
-  var values = ROSTER_COLS.map(function(col){ return record[col] !== undefined ? record[col] : ''; });
+  // Write values in the order the sheet headers actually use
+  var values = headers.map(function(col){ return record[col] !== undefined ? record[col] : ''; });
 
   if (rowIdx > 0) {
     sheet.getRange(rowIdx, 1, 1, values.length).setValues([values]);
@@ -87,9 +115,8 @@ function save(record) {
 // ── DELETE ───────────────────────────────────────────────────────────────────
 function deleteRecord(id) {
   if (!id) return { ok: false, error: 'No id provided' };
-  var sheet  = getOrCreateSheet(ROSTER_SHEET);
-  var idCol  = getOrCreateSheet(ROSTER_SHEET); // re-fetch isn't needed, sheet is the same ref
-  var data   = sheet.getDataRange().getValues();
+  var sheet   = getOrCreateSheet(ROSTER_SHEET);
+  var data    = sheet.getDataRange().getValues();
   var headers = data[0].map(String);
   var idIdx   = headers.indexOf('id');
 
