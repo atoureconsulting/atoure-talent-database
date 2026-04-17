@@ -923,36 +923,33 @@ function clearApiKey(){
 }
 async function aiCall(prompt,useSearch=true){
   const key=getApiKey();if(!key){openApiModal();return'';}
-  const MODELS=['gemini-2.0-flash','gemini-2.0-flash-001','gemini-1.5-flash'];
-  const BASE='https://generativelanguage.googleapis.com/v1beta/models/';
-  async function tryModel(model,withSearch){
-    const body={contents:[{role:'user',parts:[{text:prompt}]}]};
-    if(withSearch)body.tools=[{google_search:{}}];
-    const res=await fetch(BASE+model+':generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const data=await res.json();
-    if(data.error)throw new Error(data.error.message+'  [model:'+model+']');
-    let text='';
-    for(const part of data.candidates?.[0]?.content?.parts||[]){if(part.text)text+=part.text;}
-    return text.trim();
-  }
+  // v1beta required for Google Search grounding; v1 for plain generation
+  const V1B='https://generativelanguage.googleapis.com/v1beta/models/';
+  const V1='https://generativelanguage.googleapis.com/v1/models/';
+  // Attempts: [base_url, model, use_grounding]
+  const attempts=useSearch?[
+    [V1B,'gemini-2.0-flash-001',true],
+    [V1B,'gemini-2.0-flash',true],
+    [V1,'gemini-2.0-flash-001',false],
+    [V1,'gemini-1.5-flash-latest',false],
+  ]:[
+    [V1,'gemini-2.0-flash-001',false],
+    [V1,'gemini-1.5-flash-latest',false],
+    [V1B,'gemini-2.0-flash-001',false],
+  ];
   let lastErr;
-  for(const model of MODELS){
+  for(const [base,model,withSearch] of attempts){
     try{
-      if(useSearch){
-        // Try with search first; if empty result retry without search
-        const t=await tryModel(model,true);
-        if(t)return t;
-        console.warn('[AI] '+model+' search returned empty — retrying without grounding');
-        const t2=await tryModel(model,false);
-        if(t2)return t2;
-      } else {
-        const t=await tryModel(model,false);
-        if(t)return t;
-      }
-    }catch(e){
-      console.warn('[AI] '+model+' failed:',e.message);
-      lastErr=e;
-    }
+      const body={contents:[{role:'user',parts:[{text:prompt}]}]};
+      if(withSearch)body.tools=[{google_search:{}}];
+      const res=await fetch(base+model+':generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const data=await res.json();
+      if(data.error){lastErr=new Error(data.error.message+' ['+model+']');console.warn('[AI]',lastErr.message);continue;}
+      let text='';
+      for(const part of data.candidates?.[0]?.content?.parts||[]){if(part.text)text+=part.text;}
+      if(text.trim())return text.trim();
+      console.warn('[AI] '+model+' returned empty text, trying next');
+    }catch(e){lastErr=e;console.warn('[AI]',model,'threw:',e.message);}
   }
   throw lastErr||new Error('All Gemini models failed');
 }
