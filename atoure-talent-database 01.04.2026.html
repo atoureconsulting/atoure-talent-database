@@ -651,10 +651,10 @@ async function pullFromSheets(){
           const si=SEED.findIndex(s=>(s.name||'').toLowerCase().trim()===(base.name||'').toLowerCase().trim());
           return{...base,...seed,id:si>=0?('s'+si):(base.id||seed.id),photo_url:base.photo_url||resolvePhotoUrl(seed.name,'')};
         }
-        // For sheet rows that are SEED entries, still pin to stable seed ID
+        // For sheet rows that are SEED entries, pin to stable seed ID
         if(seed){
           const si=SEED.findIndex(s=>(s.name||'').toLowerCase().trim()===(base.name||'').toLowerCase().trim());
-          if(si>=0)base={...base,id:'s'+si};
+          if(si>=0)return{...base,id:'s'+si};
         }
         return base;
       });
