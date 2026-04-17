@@ -298,8 +298,10 @@ let db=[], selectedIds=new Set(), activeDrawerIdx=-1;
 async function init(){
   setLoading(20,'Loading roster…');
   try{
-    const r=await fetch(SHEETS_URL,{method:'POST',body:JSON.stringify({action:'getAll'}),headers:{'Content-Type':'text/plain'}});
-    const data=await r.json();
+    const _ctrl1=new AbortController();const _tid1=setTimeout(()=>_ctrl1.abort(),20000);
+    let _res1;try{_res1=await fetch(SHEETS_URL,{method:'POST',body:JSON.stringify({action:'getAll'}),headers:{'Content-Type':'text/plain'},signal:_ctrl1.signal});}catch(e){clearTimeout(_tid1);throw e;}
+    clearTimeout(_tid1);
+    const data=await _res1.json();
     if(data.ok&&Array.isArray(data.data)&&data.data.length>0){
       const seedByName2=new Map(SEED.map(s=>[(s.name||'').toLowerCase().trim(),s]));
       const score2=r=>((r.instagram_followers||0)+(r.tiktok_followers||0)+(r.youtube_followers||0))+(r.instagram?10000:0)+(r.bio?1000:0)+(r.country?100:0);
@@ -529,8 +531,10 @@ init();
 // Auto-sync: re-pull every 5 minutes while page is open
 async function reSyncRoster(){
   try{
-    const r=await fetch(SHEETS_URL,{method:'POST',body:JSON.stringify({action:'getAll'}),headers:{'Content-Type':'text/plain'}});
-    const data=await r.json();
+    const _ctrl2=new AbortController();const _tid2=setTimeout(()=>_ctrl2.abort(),20000);
+    let _res2;try{_res2=await fetch(SHEETS_URL,{method:'POST',body:JSON.stringify({action:'getAll'}),headers:{'Content-Type':'text/plain'},signal:_ctrl2.signal});}catch(e){clearTimeout(_tid2);throw e;}
+    clearTimeout(_tid2);
+    const data=await _res2.json();
     if(data.ok&&Array.isArray(data.data)&&data.data.length>0){
       const seedByNameRs=new Map(SEED.map(s=>[(s.name||'').toLowerCase().trim(),s]));
       const scoreRs=r=>((r.instagram_followers||0)+(r.tiktok_followers||0)+(r.youtube_followers||0))+(r.instagram?10000:0)+(r.bio?1000:0)+(r.country?100:0);
