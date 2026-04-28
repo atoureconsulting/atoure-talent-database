@@ -3,7 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AToure — Talent Roster</title>
+<title>AToure | African Talent &amp; Operations Partner</title>
+<meta name="description" content="AToure — Your operations + talent partner for Africa. Unmatched market access. Full logistics. Curated creators.">
+<meta name="robots" content="index, follow">
+<meta property="og:title" content="AToure | African Talent &amp; Operations Partner">
+<meta property="og:description" content="AToure — Your operations + talent partner for Africa. Unmatched market access. Full logistics. Curated creators.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://atoureconsulting.com">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AToure | African Talent &amp; Operations Partner">
+<meta name="twitter:description" content="AToure — Your operations + talent partner for Africa. Unmatched market access. Full logistics. Curated creators.">
+<link rel="canonical" href="https://atoureconsulting.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -173,6 +183,7 @@ header{
 .eq-cancel:hover{border-color:var(--black);color:var(--black);}
 .eq-submit{font-family:'Jost',sans-serif;font-size:.8rem;font-weight:500;padding:10px 24px;background:var(--black);color:var(--gold-lt);border:none;cursor:pointer;border-radius:3px;transition:box-shadow .2s,transform .18s;}
 .eq-submit:hover{box-shadow:0 6px 18px rgba(13,12,10,.25);transform:translateY(-1px);}
+.eq-disclaimer{font-family:'Jost',sans-serif;font-size:.72rem;color:var(--lt-txt);text-align:center;padding:10px 32px 20px;margin:0;background:var(--cream);border-radius:0 0 14px 14px;}
 .success-screen{text-align:center;padding:56px 36px;}
 .success-icon{font-size:36px;margin-bottom:18px;}
 .success-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:var(--gold-dk);margin-bottom:10px;}
@@ -232,7 +243,7 @@ footer::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
     <div class="hero-eyebrow">Talent Roster</div>
     <h1 class="hero-title">Our<br><em>Creators</em></h1>
     <div class="hero-rule"></div>
-    <p class="hero-sub">A curated collective of Africa's most influential voices across music, lifestyle, fashion and culture. Select any talent to learn more, or add multiple to your enquiry.</p>
+    <p class="hero-sub">A curated collective of Africa's most influential voices across music, lifestyle, fashion and culture — reaching millions across the continent. Backed by end-to-end operations. Live in 24 hours.</p>
   </div>
   <div class="hero-stats" id="heroStats"></div>
 </section>
@@ -482,7 +493,7 @@ function openEnquireModal(){
 }
 function renderEnquireModal(selected,submitted){
   if(submitted){
-    document.getElementById('eqModalInner').innerHTML=`<div class="success-screen"><div class="success-icon">✦</div><div class="success-title">Enquiry Sent</div><div class="success-sub">Thank you for your interest.<br>The AToure team will be in touch shortly.</div><button class="eq-submit" style="margin-top:28px" onclick="closeEnquireModal()">Close</button></div>`;
+    document.getElementById('eqModalInner').innerHTML=`<div class="success-screen"><div class="success-icon">✦</div><div class="success-title">Enquiry Sent</div><div class="success-sub">Thank you — check your inbox. The AToure team will be in touch within 24 hours with availability and rates.</div><button class="eq-submit" style="margin-top:28px" onclick="closeEnquireModal()">Close</button></div>`;
     return;
   }
   const tags=selected.map(t=>`<div class="eq-tag">${t.name}<span class="eq-tag-remove" onclick="removeFromEnquiry('${t._uid}')">×</span></div>`).join('');
@@ -498,13 +509,14 @@ function renderEnquireModal(selected,submitted){
         <div class="eq-field"><label>Brand / Company *</label><input type="text" id="eqBrand" placeholder="Brand name"></div>
       </div>
       <div class="eq-field"><label>Email Address *</label><input type="email" id="eqEmail" placeholder="you@brand.com"></div>
-      <div class="eq-field"><label>Campaign Type</label><select id="eqType"><option value="">Select…</option><option>Social Media Campaign</option><option>Brand Ambassador</option><option>Event Appearance</option><option>Content Creation</option><option>Other</option></select></div>
+      <div class="eq-field"><label>Campaign Type *</label><select id="eqType" required><option value="">Select…</option><option>Social Media Campaign</option><option>Brand Ambassador</option><option>Event Appearance</option><option>Content Creation</option><option>Not sure yet</option><option>Other</option></select></div>
       <div class="eq-field"><label>Message</label><textarea id="eqMessage" placeholder="Tell us about your campaign, timeline and any other details…"></textarea></div>
     </div>
     <div class="eq-footer">
       <button class="eq-cancel" onclick="closeEnquireModal()">Cancel</button>
       <button class="eq-submit" onclick="submitEnquiry()">Send Enquiry →</button>
-    </div>`;
+    </div>
+    <p class="eq-disclaimer">No commitment required — we'll reply with availability and rates within 24 hours.</p>`;
 }
 function removeFromEnquiry(id){
   selectedIds.delete(id);updateSelectionUI();renderGrid();
@@ -518,7 +530,7 @@ async function submitEnquiry(){
   const email=document.getElementById('eqEmail').value.trim();
   const type=document.getElementById('eqType').value;
   const message=document.getElementById('eqMessage').value.trim();
-  if(!name||!brand||!email){showToast('Please fill in all required fields');return;}
+  if(!name||!brand||!email||!type){showToast('Please fill in all required fields');return;}
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showToast('Please enter a valid email');return;}
   const selected=db.filter(t=>selectedIds.has(t._uid));
   try{await fetch(SHEETS_URL,{method:'POST',body:JSON.stringify({action:'enquiry',data:{name,brand,email,type,message,talent:selected.map(t=>t.name).join(', '),date:new Date().toISOString()}}),headers:{'Content-Type':'text/plain'}});}catch(e){}
