@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 
-export default function Header({ onAddContact, onImport, onExport }) {
+export default function Header({ onAddContact, onImport, onExport, onLogout }) {
   const fileRef = useRef(null);
 
   function handleFileChange(e) {
@@ -42,6 +42,12 @@ export default function Header({ onAddContact, onImport, onExport }) {
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
+        <button className="btn-ghost btn-lock" onClick={onLogout} title="Lock / Sign out">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0110 0v4"/>
+          </svg>
+        </button>
         <button className="btn-gold" onClick={onAddContact}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"/>

@@ -7,9 +7,11 @@ import ContactTable from './components/ContactTable.jsx';
 import ContactDrawer from './components/ContactDrawer.jsx';
 import ContactModal from './components/ContactModal.jsx';
 import Toast from './components/Toast.jsx';
+import LoginScreen from './components/LoginScreen.jsx';
 import {
   getContacts, getStats, getActivity, addActivity,
-  updateContact, deleteContact, bulkStatus, importContacts, exportCSVUrl
+  updateContact, deleteContact, bulkStatus, importContacts, exportCSVUrl,
+  getToken, setToken,
 } from './api.js';
 
 const ALL_COLUMNS = ['name', 'sector', 'phone', 'score', 'priority', 'status', 'followUpDate', 'actions'];
@@ -26,6 +28,22 @@ function loadVisibleColumns() {
 }
 
 export default function App() {
+  const [authenticated, setAuthenticated] = useState(() => !!getToken());
+
+  useEffect(() => {
+    function handleUnauthorized() { setAuthenticated(false); }
+    window.addEventListener('atoure:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('atoure:unauthorized', handleUnauthorized);
+  }, []);
+
+  if (!authenticated) {
+    return <LoginScreen onAuthenticated={() => setAuthenticated(true)} />;
+  }
+
+  return <AuthenticatedApp onLogout={() => { setToken(null); setAuthenticated(false); }} />;
+}
+
+function AuthenticatedApp({ onLogout }) {
   const [contacts, setContacts] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -293,6 +311,7 @@ export default function App() {
           onAddContact={handleAddContact}
           onImport={handleImport}
           onExport={handleExport}
+          onLogout={onLogout}
         />
       </div>
 
