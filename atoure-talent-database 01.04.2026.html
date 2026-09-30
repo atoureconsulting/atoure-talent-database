@@ -308,6 +308,7 @@ header{border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-i
     </div>
     <button class="btn" onclick="openHandleModal()" style="border-color:var(--ig);color:var(--ig)">@ Handles</button>
     <button class="btn" onclick="openManualRefresh()" style="border-color:var(--tt);color:var(--tt)">↻ Update Stats</button>
+    <button class="btn" onclick="openPasteResults()" style="border-color:var(--micro);color:var(--micro)">📋 Paste Results</button>
     <button class="btn" onclick="exportCSV()">↓ CSV</button>
     <button class="btn" onclick="openAI()" style="border-color:var(--gold);color:var(--gold)">✦ AI Lookup</button>
     <button class="btn" onclick="openSheetModal()" title="Connect your Google Sheet" style="border-color:var(--gold);color:var(--gold)">🔗 Sheet</button>
@@ -516,6 +517,38 @@ header{border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-i
         <button class="btn" onclick="closeManualRefresh()">Cancel</button>
         <button class="btn gold-fill" onclick="saveMRChanges()" id="mrSaveBtn">✓ Save All Changes</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- PASTE RESULTS MODAL (bulk update from a browser agent's findings) -->
+<div class="modal-overlay" id="pasteResultsModal">
+  <div class="modal" style="max-width:720px;background:var(--bg);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">
+    <div style="padding:24px 32px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--text)">Bulk Update from Browser Agent</div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-top:3px">Hand step 1 to a browsing agent, paste what it finds into step 2</div>
+      </div>
+      <button class="modal-close" onclick="closePasteResults()">×</button>
+    </div>
+    <div style="padding:20px 32px;overflow-y:auto;flex:1">
+      <div style="font-size:9px;letter-spacing:0.2em;color:var(--gold);text-transform:uppercase;margin-bottom:8px">Step 1 — profile list</div>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <textarea id="prLinksArea" readonly rows="6" class="field-input" style="resize:vertical;font-size:11px;line-height:1.6"></textarea>
+      </div>
+      <button class="btn" onclick="copyProfileLinks()" style="font-size:10px;padding:6px 12px;margin-bottom:20px">⧉ Copy List</button>
+
+      <div style="font-size:9px;letter-spacing:0.2em;color:var(--gold);text-transform:uppercase;margin-bottom:8px">Step 2 — paste results</div>
+      <div style="font-size:10.5px;color:var(--muted);line-height:1.6;margin-bottom:8px">
+        One line per creator: <code style="color:var(--text)">Name,instagram_followers,tiktok_followers,youtube_followers</code><br>
+        Leave a number blank if the agent couldn't find it — that field is left unchanged. Plain numbers or 1.2M/450K shorthand both work.
+      </div>
+      <textarea id="prPasteArea" rows="8" class="field-input" placeholder="Ashton Hall,18500000,7300000,4200000&#10;Rotimi,3800000,,1200000" style="resize:vertical;font-size:12px;line-height:1.6"></textarea>
+      <div id="prStatus" style="font-size:10px;color:var(--muted);margin-top:8px;min-height:14px"></div>
+    </div>
+    <div style="padding:16px 32px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:var(--surface)">
+      <button class="btn" onclick="closePasteResults()">Cancel</button>
+      <button class="btn gold-fill" onclick="parsePasteResults()">Parse &amp; Review</button>
     </div>
   </div>
 </div>
@@ -1109,7 +1142,7 @@ function showBulkReview(){
     rows='<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">No changes detected.</div>';
   } else {
     rows=changed.map((r,i)=>{
-      const cc=r.confidence==='high'?'#7ec97e':r.confidence==='medium'?'#c9a84c':'var(--ig)';
+      const cc=r.confidence==='high'?'#7ec97e':r.confidence==='medium'?'#c9a84c':r.confidence==='manual'?'var(--text)':'var(--ig)';
       function diffHtml(oldV,newV){if(oldV===newV)return`<span style="color:var(--muted2)">${fmt(newV)||'—'}</span>`;const d=newV-oldV;const col=d>0?'#7ec97e':'var(--ig)';return`<span style="color:var(--muted2);text-decoration:line-through;font-size:11px">${fmt(oldV)||'—'}</span> <span style="color:${col};font-family:'Cormorant Garamond',serif;font-size:17px">${fmt(newV)||'—'}</span> <span style="color:${col};font-size:10px">${d>0?'↑':'↓'}${fmt(Math.abs(d))}</span>`;}
       const initls=initials(r.name);
       return`<tr id="brow_${i}" style="border-bottom:1px solid var(--border);opacity:${r.approved?1:0.4}">
@@ -1213,6 +1246,58 @@ async function saveMRChanges(){
   const count=Object.keys(mrChanges).length;if(!count){closeManualRefresh();return;}
   Object.entries(mrChanges).forEach(([id,ch])=>{const idx=db.findIndex(t=>String(t.id)===String(id));if(idx<0)return;if(ch.ig!==undefined)db[idx].instagram_followers=ch.ig;if(ch.tt!==undefined)db[idx].tiktok_followers=ch.tt;if(ch.yt!==undefined)db[idx].youtube_followers=ch.yt;db[idx].last_updated=new Date().toISOString().split('T')[0];});
   saveLocal();renderStats();renderAll();closeManualRefresh();showToast('✓ '+count+' talent updated — syncing…');setSyncUI('busy','Syncing…');pushAllToSheets();
+}
+
+// ── PASTE RESULTS (bulk update from a browser agent's findings) ──
+function buildProfileLinksText(){
+  return db.map(t=>{
+    const ig=(t.instagram||'').replace('@','');
+    const tt=(t.tiktok_handle||'').replace('@','');
+    const yt=t.youtube_handle||'';
+    const igUrl=ig?'https://instagram.com/'+ig:'—';
+    const ttUrl=tt?'https://tiktok.com/@'+tt:'—';
+    const ytUrl=yt?(yt.startsWith('http')?yt:'https://youtube.com/'+yt):'—';
+    return `${t.name} | Instagram: ${igUrl} | TikTok: ${ttUrl} | YouTube: ${ytUrl}`;
+  }).join('\n');
+}
+function openPasteResults(){
+  document.getElementById('prLinksArea').value=buildProfileLinksText();
+  document.getElementById('prPasteArea').value='';
+  document.getElementById('prStatus').textContent='';
+  document.getElementById('pasteResultsModal').classList.add('open');
+}
+function closePasteResults(){document.getElementById('pasteResultsModal').classList.remove('open');}
+async function copyProfileLinks(){
+  const el=document.getElementById('prLinksArea');el.select();
+  try{await navigator.clipboard.writeText(el.value);showToast('✓ Copied '+db.length+' profile links');}
+  catch(e){showToast('Could not copy — select and copy manually');}
+}
+function parsePasteResults(){
+  const text=document.getElementById('prPasteArea').value.trim();
+  const status=document.getElementById('prStatus');
+  if(!text){status.textContent='Paste the agent\'s results first';return;}
+  const byNameLower=new Map(db.map((t,i)=>[(t.name||'').toLowerCase().trim(),i]));
+  const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  bulkResults=[];
+  const unmatched=[];
+  for(const line of lines){
+    if(/^name\s*,/i.test(line))continue; // skip an optional header row
+    const parts=line.split(',');
+    const name=(parts[0]||'').trim();
+    if(!name)continue;
+    const idx=byNameLower.get(name.toLowerCase());
+    if(idx===undefined){unmatched.push(name);continue;}
+    const t=db[idx];
+    const oi=t.instagram_followers||0,ot=t.tiktok_followers||0,oy=t.youtube_followers||0;
+    const pi=parseInput(parts[1]||''),pt=parseInput(parts[2]||''),py=parseInput(parts[3]||'');
+    const ni=pi===null?oi:pi,nt=pt===null?ot:pt,ny=py===null?oy:py;
+    const hasChange=(ni!==oi)||(nt!==ot)||(ny!==oy);
+    bulkResults.push({idx,name:t.name,role:t.role||'',photo_url:t.photo_url||'',confidence:'manual',hasChange,approved:hasChange,old:{ig:oi,tt:ot,yt:oy},new:{ig:ni,tt:nt,yt:ny}});
+  }
+  if(!bulkResults.length){status.textContent='No matching names found — check the CSV against the names in Step 1';return;}
+  closePasteResults();
+  showBulkReview();
+  if(unmatched.length)showToast('⚠ '+unmatched.length+' name(s) not matched: '+unmatched.slice(0,5).join(', ')+(unmatched.length>5?'…':''));
 }
 
 // ── HANDLE EDITOR ──
