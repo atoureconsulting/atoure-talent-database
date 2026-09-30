@@ -1034,7 +1034,7 @@ Return ONLY the bio text, no quotes, no explanation.`;
     text=text.replace(/^["']|["']$/g,'');
     if(text){document.getElementById('eBio').value=text;status.innerHTML='<span style="color:#7ec97e">✓ Bio generated — edit as needed</span>';}
     else status.textContent='⚠ Could not generate — try adding more details';
-  }catch(e){status.textContent='⚠ Error generating bio';console.error(e);}
+  }catch(e){status.textContent='⚠ '+(e.message||'Error generating bio');console.error(e);}
   btn.textContent='✦ Regenerate';btn.disabled=false;
 }
 
@@ -1068,7 +1068,7 @@ Return the actual numbers found. Return ONLY JSON (no markdown):
     const cc=conf==='high'?'#7ec97e':conf==='medium'?'#c9a84c':'var(--ig)';
     status.innerHTML=`<span style="color:${cc}">● ${conf.toUpperCase()} confidence</span>${d.notes?' · '+d.notes:''}`;
     showToast('✓ Stats refreshed — review then save');
-  }catch(e){status.textContent='⚠ Could not retrieve stats';console.error(e);}
+  }catch(e){status.textContent='⚠ '+(e.message||'Could not retrieve stats');console.error(e);}
   btn.textContent='↻ Refresh Stats';btn.disabled=false;
 }
 
@@ -1325,7 +1325,7 @@ Search the web and return ONLY a valid JSON object (no markdown):
     const text=await aiCall(prompt,true);
     const raw2=extractJSON(text);if(!raw2)throw new Error('No JSON in response');
     aiData=JSON.parse(raw2);showAIResult(aiData);
-  }catch(e){document.getElementById('aiStatus').textContent='⚠ Could not retrieve data. Try a more specific name.';console.error(e);}
+  }catch(e){document.getElementById('aiStatus').textContent='⚠ '+(e.message||'Could not retrieve data')+' — try a more specific name.';console.error(e);}
   btn.textContent='Search';btn.disabled=false;
 }
 function showAIResult(d){
