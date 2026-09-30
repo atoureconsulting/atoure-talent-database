@@ -14,7 +14,7 @@ var ROSTER_COLS = [
   'instagram','instagram_followers',
   'tiktok_handle','tiktok_followers',
   'youtube_handle','youtube_followers',
-  'photo_url','bio','notes','last_updated'
+  'photo_url','bio','notes','outreach_status','last_updated'
 ];
 
 // ── GET (browser test) ───────────────────────────────────────────────────────
