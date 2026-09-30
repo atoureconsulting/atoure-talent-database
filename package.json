@@ -1,13 +1,8 @@
 {
-  "name": "atoure-contact-db",
+  "name": "atoure-talent-database",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "build": "cd frontend && npm install && npm run build",
-    "start": "node backend/server.js",
-    "install:all": "npm install --prefix backend && npm install --prefix frontend"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
+    "dev": "node server.js",
+    "start": "node server.js"
   }
 }
