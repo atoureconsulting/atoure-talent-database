@@ -388,6 +388,7 @@ header{border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-i
         <div class="modal-title" id="editTitle"></div>
         <div class="modal-sub" id="editSub"></div>
         <div id="editTierEl"></div>
+        <div id="editLastUpdated" style="font-size:9px;color:var(--muted2);margin-top:4px"></div>
       </div>
       <button class="modal-close" onclick="closeEdit()">×</button>
     </div>
@@ -632,6 +633,12 @@ const FM={'uk':'🇬🇧','us':'🇺🇸','usa':'🇺🇸','france':'🇫🇷','
 function getFlags(c){if(!c)return'';return c.split(',').map(p=>FM[p.trim().toLowerCase()]||'').filter(Boolean).join(' ');}
 function fmtCountry(c){if(!c)return'';const f=getFlags(c);return f?f+'\u00a0'+c:c;}
 function fmt(n){if(!n||n===0)return null;if(n>=1000000)return(n/1000000).toFixed(1).replace(/\.0$/,'')+'M';if(n>=1000)return(n/1000).toFixed(1).replace(/\.0$/,'')+'K';return n.toLocaleString();}
+function fmtDateTime(iso){
+  if(!iso)return null;
+  const d=new Date(iso);
+  if(isNaN(d.getTime()))return iso; // legacy plain-text value, show as-is
+  return d.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})+' at '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+}
 function total(t){return(t.instagram_followers||0)+(t.tiktok_followers||0)+(t.youtube_followers||0);}
 function tier(t){return t>=10000000?'MEGA':t>=1000000?'MACRO':t>=100000?'MID':'MICRO';}
 function tierColor(ti){return ti==='MEGA'?'#c9a84c':ti==='MACRO'?'#7eb3c9':ti==='MID'?'#9b7ec9':'#7ec97e';}
@@ -935,6 +942,9 @@ function openProfile(idx){
       ${statRow('yt','YouTube',t.youtube_handle||'',t.youtube_followers||0,t.youtube_handle?(t.youtube_handle.startsWith('http')?t.youtube_handle:'https://youtube.com/'+t.youtube_handle):null)}
     </div>
     <div class="pc-total-row"><span style="font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--muted)">Total Combined Reach</span><span style="font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--gold)">${fmt(T)||'—'}</span></div>
+    <div class="pc-updated-row" style="padding:10px 40px;font-size:10px;color:var(--muted2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+      <span>●</span><span>Stats last updated: ${fmtDateTime(t.last_updated)||'<span style="color:var(--ig)">never — click Edit to refresh</span>'}</span>
+    </div>
     <div class="pc-footer"><img class="pc-footer-logo" src="${LOGO_SRC}"><span style="font-size:9px;letter-spacing:0.2em;color:var(--muted2);text-transform:uppercase">AToure Management &amp; Consulting</span></div>`;
   const inDeck=deckIds.has(t.id);
   document.getElementById('addToDeckBtn').textContent=inDeck?'✓ In Deck':'＋ Add to Deck';
@@ -949,6 +959,7 @@ function openEdit(idx){
   document.getElementById('editTitle').textContent=t.name;
   document.getElementById('editSub').textContent=(t.instagram?'@'+t.instagram+' · ':'')+fmtCountry(t.country||'');
   document.getElementById('editTierEl').innerHTML=`<span class="tier-badge tier-${tier(total(t))}">${tier(total(t))}</span>`;
+  document.getElementById('editLastUpdated').textContent=t.last_updated?('Stats last updated: '+fmtDateTime(t.last_updated)):'Stats never updated';
   const av=document.getElementById('editAv');
   av.innerHTML=t.photo_url?`<img src="${t.photo_url}" onerror="this.parentNode.innerHTML='${initials(t.name)}'">`  :initials(t.name);
   document.getElementById('eName').value=t.name||'';
@@ -977,6 +988,7 @@ function openAddModal(){
   document.getElementById('editTitle').textContent='New Talent';
   document.getElementById('editSub').textContent='';
   document.getElementById('editTierEl').innerHTML='';
+  document.getElementById('editLastUpdated').textContent='';
   document.getElementById('editAv').innerHTML='+';
   document.getElementById('deleteBtn').style.display='none';
   document.getElementById('bioStatus').textContent='';
@@ -989,7 +1001,7 @@ function previewPhoto(){const url=document.getElementById('ePhoto').value;const 
 async function saveTalent(){
   const name=document.getElementById('eName').value.trim();
   if(!name){showToast('Name is required');return;}
-  const rec={id:editIdx>=0?db[editIdx].id:Date.now(),name,role:document.getElementById('eRole').value.trim(),country:document.getElementById('eCountry').value.trim(),instagram:document.getElementById('eIg').value.replace('@','').trim(),tiktok_handle:document.getElementById('eTt').value.replace('@','').trim(),youtube_handle:document.getElementById('eYt').value.trim(),instagram_followers:parseInt(document.getElementById('eIgF').value)||0,tiktok_followers:parseInt(document.getElementById('eTtF').value)||0,youtube_followers:parseInt(document.getElementById('eYtF').value)||0,photo_url:document.getElementById('ePhoto').value.trim(),bio:document.getElementById('eBio').value.trim(),notes:document.getElementById('eNotes').value.trim(),outreach_status:document.getElementById('eStatus').value,last_updated:new Date().toISOString().split('T')[0],gender:editIdx>=0?(db[editIdx].gender||''):''};
+  const rec={id:editIdx>=0?db[editIdx].id:Date.now(),name,role:document.getElementById('eRole').value.trim(),country:document.getElementById('eCountry').value.trim(),instagram:document.getElementById('eIg').value.replace('@','').trim(),tiktok_handle:document.getElementById('eTt').value.replace('@','').trim(),youtube_handle:document.getElementById('eYt').value.trim(),instagram_followers:parseInt(document.getElementById('eIgF').value)||0,tiktok_followers:parseInt(document.getElementById('eTtF').value)||0,youtube_followers:parseInt(document.getElementById('eYtF').value)||0,photo_url:document.getElementById('ePhoto').value.trim(),bio:document.getElementById('eBio').value.trim(),notes:document.getElementById('eNotes').value.trim(),outreach_status:document.getElementById('eStatus').value,last_updated:new Date().toISOString(),gender:editIdx>=0?(db[editIdx].gender||''):''};
   if(editIdx>=0)db[editIdx]=rec;else db.push(rec);
   saveLocal();closeEdit();renderStats();renderAll();
   showToast(editIdx>=0?'Saved & syncing…':'Added & syncing…');
@@ -1182,7 +1194,7 @@ function toggleAllBRows(val){bulkResults.filter(r=>r.hasChange).forEach((r,i)=>{
 function confirmBulkRefresh(){
   const toApply=bulkResults.filter(r=>r.hasChange&&r.approved);
   if(!toApply.length){showToast('No changes selected');return;}
-  toApply.forEach(r=>{db[r.idx].instagram_followers=r.new.ig;db[r.idx].tiktok_followers=r.new.tt;db[r.idx].youtube_followers=r.new.yt;db[r.idx].last_updated=new Date().toISOString().split('T')[0];});
+  toApply.forEach(r=>{db[r.idx].instagram_followers=r.new.ig;db[r.idx].tiktok_followers=r.new.tt;db[r.idx].youtube_followers=r.new.yt;db[r.idx].last_updated=new Date().toISOString();});
   saveLocal();renderStats();renderAll();
   pushAllToSheets();
   document.getElementById('bulkReviewModal').classList.remove('open');
@@ -1244,7 +1256,7 @@ function handleMRInput(el){
 function updateMRProgress(){const count=Object.keys(mrChanges).length;document.getElementById('mrProgress').textContent=count+' updated';document.getElementById('mrProgBar').style.width=(db.length>0?Math.round((count/db.length)*100):0)+'%';document.getElementById('mrSaveBtn').textContent=count>0?'✓ Save '+count+' Change'+(count!==1?'s':''):'✓ Save All Changes';}
 async function saveMRChanges(){
   const count=Object.keys(mrChanges).length;if(!count){closeManualRefresh();return;}
-  Object.entries(mrChanges).forEach(([id,ch])=>{const idx=db.findIndex(t=>String(t.id)===String(id));if(idx<0)return;if(ch.ig!==undefined)db[idx].instagram_followers=ch.ig;if(ch.tt!==undefined)db[idx].tiktok_followers=ch.tt;if(ch.yt!==undefined)db[idx].youtube_followers=ch.yt;db[idx].last_updated=new Date().toISOString().split('T')[0];});
+  Object.entries(mrChanges).forEach(([id,ch])=>{const idx=db.findIndex(t=>String(t.id)===String(id));if(idx<0)return;if(ch.ig!==undefined)db[idx].instagram_followers=ch.ig;if(ch.tt!==undefined)db[idx].tiktok_followers=ch.tt;if(ch.yt!==undefined)db[idx].youtube_followers=ch.yt;db[idx].last_updated=new Date().toISOString();});
   saveLocal();renderStats();renderAll();closeManualRefresh();showToast('✓ '+count+' talent updated — syncing…');setSyncUI('busy','Syncing…');pushAllToSheets();
 }
 
@@ -1390,7 +1402,7 @@ async function aiLookupAllHandles(){
 }
 function saveHandles(){
   const count=Object.keys(handleChanges).length;if(!count){closeHandleModal();return;}
-  Object.entries(handleChanges).forEach(([id,ch])=>{const idx=db.findIndex(t=>String(t.id)===String(id));if(idx<0)return;if(ch.instagram!==undefined)db[idx].instagram=ch.instagram;if(ch.tiktok_handle!==undefined)db[idx].tiktok_handle=ch.tiktok_handle;if(ch.youtube_handle!==undefined)db[idx].youtube_handle=ch.youtube_handle;if(ch.instagram_followers!==undefined)db[idx].instagram_followers=parseInt(ch.instagram_followers)||0;if(ch.tiktok_followers!==undefined)db[idx].tiktok_followers=parseInt(ch.tiktok_followers)||0;if(ch.youtube_followers!==undefined)db[idx].youtube_followers=parseInt(ch.youtube_followers)||0;if(ch.country)db[idx].country=ch.country;if(ch.role)db[idx].role=ch.role;if(ch.bio)db[idx].bio=ch.bio;db[idx].last_updated=new Date().toISOString().split('T')[0];});
+  Object.entries(handleChanges).forEach(([id,ch])=>{const idx=db.findIndex(t=>String(t.id)===String(id));if(idx<0)return;if(ch.instagram!==undefined)db[idx].instagram=ch.instagram;if(ch.tiktok_handle!==undefined)db[idx].tiktok_handle=ch.tiktok_handle;if(ch.youtube_handle!==undefined)db[idx].youtube_handle=ch.youtube_handle;if(ch.instagram_followers!==undefined)db[idx].instagram_followers=parseInt(ch.instagram_followers)||0;if(ch.tiktok_followers!==undefined)db[idx].tiktok_followers=parseInt(ch.tiktok_followers)||0;if(ch.youtube_followers!==undefined)db[idx].youtube_followers=parseInt(ch.youtube_followers)||0;if(ch.country)db[idx].country=ch.country;if(ch.role)db[idx].role=ch.role;if(ch.bio)db[idx].bio=ch.bio;db[idx].last_updated=new Date().toISOString();});
   saveLocal();renderStats();renderAll();closeHandleModal();showToast('✓ '+count+' talent handles updated — syncing…');setSyncUI('busy','Syncing…');pushAllToSheets();
 }
 
@@ -1444,6 +1456,7 @@ function addAITalent(){
   document.getElementById('editSub').textContent=(d.instagram?'@'+d.instagram+' · ':'')+fmtCountry(d.country||'');
   const T=(d.instagram_followers||0)+(d.tiktok_followers||0)+(d.youtube_followers||0);
   document.getElementById('editTierEl').innerHTML=`<span class="tier-badge tier-${tier(T)}">${tier(T)}</span>`;
+  document.getElementById('editLastUpdated').textContent='Not saved yet';
   document.getElementById('deleteBtn').style.display='none';document.getElementById('bioStatus').textContent='';document.getElementById('refreshStatus').textContent='';
   document.getElementById('editOverlay').classList.add('open');
 }
