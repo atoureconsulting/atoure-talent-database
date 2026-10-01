@@ -20,7 +20,7 @@ const MIME = {
 
 const ROUTES = {
   '/': 'index.html',
-  '/admin': 'atoure-talent-database 01.04.2026.html',
+  '/admin': 'admin.html',
 };
 
 function safeJoin(root, reqPath) {
