@@ -88,7 +88,7 @@ header{
 .card-select-badge{position:absolute;top:12px;right:12px;width:22px;height:22px;border:1.5px solid var(--cream-dk);background:var(--cream);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:.72rem;color:transparent;transition:all .15s;z-index:2;}
 .card.selected .card-select-badge{background:var(--gold);border-color:var(--gold);color:var(--black);}
 .card-photo{width:100%;height:210px;background:var(--gold-pale);overflow:hidden;position:relative;flex-shrink:0;}
-.card-photo img{width:100%;height:100%;object-fit:cover;transition:transform .4s;}
+.card-photo img{width:100%;height:100%;object-fit:cover;object-position:center 20%;transition:transform .4s;}
 .card:hover .card-photo img{transform:scale(1.05);}
 .card-photo-initials{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:600;color:var(--gold-dk);background:linear-gradient(135deg,var(--gold-pale),var(--cream-mid));}
 .card-body{padding:18px 20px;flex:1;display:flex;flex-direction:column;gap:8px;}
@@ -118,7 +118,7 @@ header{
 .drawer{position:fixed;right:0;top:0;bottom:0;width:min(540px,100vw);background:var(--warm-white);border-left:1px solid var(--cream-dk);z-index:201;transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column;box-shadow:var(--sh);}
 .drawer.open{transform:translateX(0);}
 .drawer-photo{width:100%;height:260px;background:var(--gold-pale);overflow:hidden;position:relative;flex-shrink:0;}
-.drawer-photo img{width:100%;height:100%;object-fit:cover;}
+.drawer-photo img{width:100%;height:100%;object-fit:cover;object-position:center 20%;}
 .drawer-photo-initials{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:80px;font-weight:600;color:var(--gold-dk);background:linear-gradient(135deg,var(--gold-pale),var(--cream-mid));}
 .drawer-photo-overlay{position:absolute;bottom:0;left:0;right:0;padding:20px;background:linear-gradient(transparent,rgba(13,12,10,.75));}
 .drawer-close{position:absolute;top:14px;right:14px;background:rgba(13,12,10,.5);border:1px solid rgba(255,255,255,.15);color:#fff;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;border-radius:3px;transition:background .15s;}
