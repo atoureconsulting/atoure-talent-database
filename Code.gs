@@ -3,10 +3,10 @@
 // Execute as: Me | Who has access: Anyone
 //
 // Sheet names used:
-//   "Roster"    — main talent data
+//   "Updated Oct 2026" — main talent data (the live site reads this tab)
 //   "Enquiries" — client enquiry form submissions
 
-var ROSTER_SHEET    = 'Roster';
+var ROSTER_SHEET    = 'Updated Oct 2026';
 var ENQUIRY_SHEET   = 'Enquiries';
 
 var ROSTER_COLS = [
@@ -14,7 +14,9 @@ var ROSTER_COLS = [
   'instagram','instagram_followers',
   'tiktok_handle','tiktok_followers',
   'youtube_handle','youtube_followers',
-  'photo_url','bio','notes','outreach_status','last_updated'
+  'total_reach','verified','tier','category','bio','business_email',
+  'instagram_link','tiktok_link','youtube_link',
+  'photo_url','notes','outreach_status','last_updated'
 ];
 
 // ── GET (browser test) ───────────────────────────────────────────────────────
@@ -130,18 +132,20 @@ function deleteRecord(id) {
 }
 
 // ── BULK INIT ────────────────────────────────────────────────────────────────
+// Rewrites the data rows but keeps the tab's own column order (and any extra
+// columns you added by hand) instead of replacing the header row.
 function bulkInit(records) {
   if (!records || !records.length) return { ok: false, error: 'No records provided' };
-  var sheet = getOrCreateSheet(ROSTER_SHEET);
-  sheet.clearContents();
-
-  var header = [ROSTER_COLS];
-  var rows   = records.map(function(r){
-    return ROSTER_COLS.map(function(col){ return r[col] !== undefined ? r[col] : ''; });
+  var sheet   = getOrCreateSheet(ROSTER_SHEET);
+  var headers = ensureHeaders(sheet, ROSTER_COLS);
+  var rows    = records.map(function(r){
+    return headers.map(function(col){ return col && r[col] !== undefined ? r[col] : ''; });
   });
 
-  sheet.getRange(1, 1, 1, ROSTER_COLS.length).setValues(header);
-  sheet.getRange(2, 1, rows.length, ROSTER_COLS.length).setValues(rows);
+  if (sheet.getLastRow() > 1) {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).clearContent();
+  }
+  sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
   return { ok: true };
 }
 
@@ -171,9 +175,19 @@ function ensureHeaders(sheet, cols) {
     ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String)
     : [];
 
-  if (existing.length === 0 || existing[0] === '') {
+  if (existing.length === 0 || existing.every(function(h){ return h === ''; })) {
     sheet.getRange(1, 1, 1, cols.length).setValues([cols]);
     return cols;
   }
-  return existing;
+
+  // Add any columns the app needs that the tab doesn't have yet (e.g. outreach_status)
+  var lastNamed = 0;
+  existing.forEach(function(h, i){ if (h !== '') lastNamed = i + 1; });
+  var headers = existing.slice(0, lastNamed);
+  var missing = cols.filter(function(c){ return headers.indexOf(c) === -1; });
+  if (missing.length) {
+    sheet.getRange(1, headers.length + 1, 1, missing.length).setValues([missing]);
+    headers = headers.concat(missing);
+  }
+  return headers;
 }
